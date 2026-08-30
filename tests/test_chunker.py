@@ -60,3 +60,8 @@ def test_chunk_document():
 
     assert result.chunks[3].page_number == 2
     assert result.chunks[3].text == "seven eight"
+
+    assert result.chunks[0].chunk_id == 1
+    assert result.chunks[1].chunk_id == 2
+    assert result.chunks[2].chunk_id == 3
+    assert result.chunks[3].chunk_id == 4

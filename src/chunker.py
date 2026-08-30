@@ -28,7 +28,10 @@ def chunk_document(
 
     for page in document.pages:
         page_chunks = chunk_page(page, chunk_size)
-        all_chunks.extend(page_chunks)
+
+        for chunk in page_chunks:
+            chunk.chunk_id = len(all_chunks) + 1
+            all_chunks.append(chunk)
 
     document.chunks = all_chunks
 
