@@ -1,11 +1,11 @@
-import fitz
+import pymupdf
 
 from src.document_processor import process_pdf
 
 def test_process_pdf(tmp_path):
     pdf_path = tmp_path / "test_document.pdf"
 
-    document = fitz.open()
+    document = pymupdf.open()
 
     page = document.new_page()
     page.insert_text((72, 72), "Frequenz-\numrichter")

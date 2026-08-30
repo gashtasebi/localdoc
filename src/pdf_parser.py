@@ -1,10 +1,10 @@
-import fitz
+import pymupdf
 
 def extract_text_from_pdf(pdf_path):
-    document = fitz.open(pdf_path)
+    document = pymupdf.open(pdf_path)
 
     try:
-        document = fitz.open(pdf_path)
+        document = pymupdf.open(pdf_path)
     except Exception as error:
         raise ValueError(f"Could not open PDF: {pdf_path}") from error
 

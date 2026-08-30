@@ -1,11 +1,11 @@
-import fitz
+import pymupdf
 
 from src.pdf_parser import extract_text_from_pdf
 
 def test_extract_text_from_multi_page_pdf(tmp_path):
     pdf_path = tmp_path / "test_document.pdf"
 
-    document = fitz.open()
+    document = pymupdf.open()
 
     page1 = document.new_page()
     page1.insert_text((72, 72), "Maschine M42")
