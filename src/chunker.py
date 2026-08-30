@@ -1,4 +1,4 @@
-from src.models import Chunk, Page
+from src.models import Chunk, Page, Document
 
 
 def chunk_page(page: Page, chunk_size: int = 500) -> list[Chunk]:
@@ -18,3 +18,18 @@ def chunk_page(page: Page, chunk_size: int = 500) -> list[Chunk]:
         )
 
     return chunks
+
+
+def chunk_document(
+    document: Document,
+    chunk_size: int = 500,
+) -> Document:
+    all_chunks = []
+
+    for page in document.pages:
+        page_chunks = chunk_page(page, chunk_size)
+        all_chunks.extend(page_chunks)
+
+    document.chunks = all_chunks
+
+    return document

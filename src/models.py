@@ -16,3 +16,4 @@ class Chunk:
 @dataclass
 class Document:
     pages: list[Page]
+    chunks: list[Chunk] | None = None
