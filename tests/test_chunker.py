@@ -34,11 +34,11 @@ def test_chunk_document():
         pages=[
             Page(
                 page_number=1,
-                text="one two three four",
+                text="one. two. three. four.",
             ),
             Page(
                 page_number=2,
-                text="five six seven eight",
+                text="five. six. seven. eight.",
             ),
         ]
     )
@@ -47,19 +47,19 @@ def test_chunk_document():
 
     assert result is document
     assert result.chunks is not None
-    assert len(result.chunks) == 4
+    assert len(result.chunks) == 6
 
     assert result.chunks[0].page_number == 1
-    assert result.chunks[0].text == "one two"
+    assert result.chunks[0].text == "one. two."
 
     assert result.chunks[1].page_number == 1
-    assert result.chunks[1].text == "three four"
-
-    assert result.chunks[2].page_number == 2
-    assert result.chunks[2].text == "five six"
+    assert result.chunks[1].text == "two. three."
 
     assert result.chunks[3].page_number == 2
-    assert result.chunks[3].text == "seven eight"
+    assert result.chunks[3].text == "five. six."
+
+    assert result.chunks[4].page_number == 2
+    assert result.chunks[4].text == "six. seven."
 
     assert result.chunks[0].chunk_id == 1
     assert result.chunks[1].chunk_id == 2

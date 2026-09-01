@@ -66,7 +66,7 @@ def chunk_document(
     all_chunks = []
 
     for page in document.pages:
-        page_chunks = chunk_page(page, chunk_size)
+        page_chunks = chunk_page_by_sentence(page, chunk_size)
 
         for chunk in page_chunks:
             chunk.chunk_id = len(all_chunks) + 1
