@@ -62,11 +62,12 @@ def chunk_page(page: Page, chunk_size: int = 500) -> list[Chunk]:
 def chunk_document(
     document: Document,
     chunk_size: int = 500,
+    overlap: int = 1,
 ) -> Document:
     all_chunks = []
 
     for page in document.pages:
-        page_chunks = chunk_page_by_sentence(page, chunk_size)
+        page_chunks = chunk_page_by_sentence(page, chunk_size, overlap)
 
         for chunk in page_chunks:
             chunk.chunk_id = len(all_chunks) + 1
