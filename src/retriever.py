@@ -31,3 +31,19 @@ def retrieve(
     )
 
     return ranked[:top_k]
+
+
+
+def retrieve_by_text(
+    query: str,
+    embedded_chunks: list[EmbeddedChunk],
+    embedder,
+    top_k: int = 3,
+) -> list[EmbeddedChunk]:
+    query_vector = embedder.embed(query)
+
+    return retrieve(
+        query_vector=query_vector,
+        embedded_chunks=embedded_chunks,
+        top_k=top_k,
+    )
