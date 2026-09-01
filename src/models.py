@@ -17,3 +17,8 @@ class Chunk:
 class Document:
     pages: list[Page]
     chunks: list[Chunk] | None = None
+
+@dataclass
+class EmbeddedChunk:
+    chunk: Chunk
+    vector: list[float]
