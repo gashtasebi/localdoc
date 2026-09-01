@@ -65,3 +65,15 @@ def test_chunk_document():
     assert result.chunks[1].chunk_id == 2
     assert result.chunks[2].chunk_id == 3
     assert result.chunks[3].chunk_id == 4
+
+def test_split_sentences():
+    from src.chunker import split_sentences
+
+    text = "First sentence. Second sentence! Is this the third sentence?"
+
+    sentences = split_sentences(text)
+
+    assert len(sentences) == 3
+    assert sentences[0] == "First sentence."
+    assert sentences[1] == "Second sentence!"
+    assert sentences[2] == "Is this the third sentence?"

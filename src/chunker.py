@@ -1,4 +1,9 @@
+import re
 from src.models import Chunk, Page, Document
+
+def split_sentences(text: str) -> list[str]:
+    sentences = re.split(r"(?<=[.!?])\s+", text.strip())
+    return [sentence for sentence in sentences if sentence]
 
 
 def chunk_page(page: Page, chunk_size: int = 500) -> list[Chunk]:
