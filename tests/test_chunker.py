@@ -77,3 +77,37 @@ def test_split_sentences():
     assert sentences[0] == "First sentence."
     assert sentences[1] == "Second sentence!"
     assert sentences[2] == "Is this the third sentence?"
+
+def test_chunk_page_by_sentence():
+    from src.chunker import chunk_page_by_sentence
+
+    page = Page(
+        page_number=5,
+        text=(
+            "Sentence one. "
+            "Sentence two. "
+            "Sentence three. "
+            "Sentence four. "
+            "Sentence five."
+        ),
+    )
+
+    chunks = chunk_page_by_sentence(
+        page,
+        chunk_size=3,
+        overlap=1,
+    )
+
+    assert len(chunks) == 2
+
+    assert chunks[0].chunk_id == 1
+    assert chunks[0].page_number == 5
+    assert chunks[0].text == (
+        "Sentence one. Sentence two. Sentence three."
+    )
+
+    assert chunks[1].chunk_id == 2
+    assert chunks[1].page_number == 5
+    assert chunks[1].text == (
+        "Sentence three. Sentence four. Sentence five."
+    )

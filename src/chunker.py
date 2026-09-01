@@ -5,6 +5,40 @@ def split_sentences(text: str) -> list[str]:
     sentences = re.split(r"(?<=[.!?])\s+", text.strip())
     return [sentence for sentence in sentences if sentence]
 
+def chunk_page_by_sentence(
+    page: Page,
+    chunk_size: int = 5,
+    overlap: int = 1,
+) -> list[Chunk]:
+    sentences = split_sentences(page.text)
+    chunks = []
+
+    if overlap >= chunk_size:
+        raise ValueError("overlap must be smaller than chunk_size")
+
+    start = 0
+
+    while start < len(sentences):
+        end = start + chunk_size
+        chunk_sentences = sentences[start:end]
+
+        chunk_text = " ".join(chunk_sentences)
+
+        chunks.append(
+            Chunk(
+                chunk_id=len(chunks) + 1,
+                page_number=page.page_number,
+                text=chunk_text,
+            )
+        )
+
+        if end >= len(sentences):
+            break
+
+        start = end - overlap
+
+    return chunks
+
 
 def chunk_page(page: Page, chunk_size: int = 500) -> list[Chunk]:
     words = page.text.split()
