@@ -111,3 +111,23 @@ def test_chunk_page_by_sentence():
     assert chunks[1].text == (
         "Sentence three. Sentence four. Sentence five."
     )
+
+
+def test_chunk_page_by_sentence_invalid_overlap():
+    from src.chunker import chunk_page_by_sentence
+
+    page = Page(
+        page_number=1,
+        text="One. Two. Three.",
+    )
+
+    try:
+        chunk_page_by_sentence(
+            page,
+            chunk_size=2,
+            overlap=2,
+        )
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Expected ValueError for invalid overlap")
