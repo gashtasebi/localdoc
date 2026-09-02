@@ -78,6 +78,30 @@ class LocalDatabase:
 
         return document_id
 
+
+    def find_document_by_path(
+        self,
+        file_path: str,
+    ) -> int | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                """
+                SELECT id
+                FROM documents
+                WHERE file_path = ?
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                (file_path,),
+            ).fetchone()
+
+        if row is None:
+            return None
+
+        return row[0]
+
+
+
     def load_embedded_chunks(
         self,
         document_id: int,

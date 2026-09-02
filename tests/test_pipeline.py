@@ -115,3 +115,58 @@ def test_process_pdf_pipeline_stores_document(tmp_path):
     assert loaded_chunks
     assert loaded_chunks[0].chunk.text
     assert loaded_chunks[0].vector == [0.1, 0.2, 0.3]
+
+
+
+def test_process_pdf_pipeline_does_not_embed_existing_document(tmp_path):
+    import fitz
+
+    from src.pipeline import process_pdf_pipeline
+    from src.storage.database import LocalDatabase
+
+    class CountingEmbedder:
+        def __init__(self):
+            self.calls = 0
+
+        def embed(self, text):
+            self.calls += 1
+            return [0.1, 0.2, 0.3]
+
+    pdf_path = tmp_path / "document.pdf"
+
+    pdf = fitz.open()
+    page = pdf.new_page()
+    page.insert_text(
+        (72, 72),
+        "This is a test document for LocalDoc."
+    )
+    pdf.save(pdf_path)
+    pdf.close()
+
+    database = LocalDatabase(
+        tmp_path / "localdoc.db"
+    )
+
+    embedder = CountingEmbedder()
+
+    first_result = process_pdf_pipeline(
+        pdf_path=pdf_path,
+        embedder=embedder,
+        chunk_size=5,
+        overlap=1,
+        database=database,
+    )
+
+    first_call_count = embedder.calls
+
+    second_result = process_pdf_pipeline(
+        pdf_path=pdf_path,
+        embedder=embedder,
+        chunk_size=5,
+        overlap=1,
+        database=database,
+    )
+
+    assert first_call_count > 0
+    assert embedder.calls == first_call_count
+    assert second_result == first_result

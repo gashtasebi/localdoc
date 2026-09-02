@@ -144,3 +144,60 @@ def test_load_embedded_chunks(tmp_path):
         "Python is widely used in NLP."
     )
     assert loaded_chunks[1].vector == [0.4, 0.5, 0.6]
+
+
+
+def test_find_document_by_path(tmp_path):
+    from src.models import Chunk, Document, EmbeddedChunk
+    from src.storage.database import LocalDatabase
+
+    database = LocalDatabase(
+        tmp_path / "localdoc.db"
+    )
+
+    database.initialize()
+
+    document = Document(
+        pages=[]
+    )
+
+    embedded_chunks = [
+        EmbeddedChunk(
+            chunk=Chunk(
+                chunk_id=1,
+                page_number=1,
+                text="Test document",
+            ),
+            vector=[0.1, 0.2, 0.3],
+        )
+    ]
+
+    file_path = "/documents/test.pdf"
+
+    document_id = database.save_document(
+        document=document,
+        embedded_chunks=embedded_chunks,
+        file_path=file_path,
+    )
+
+    found_id = database.find_document_by_path(
+        file_path
+    )
+
+    assert found_id == document_id
+
+
+def test_find_document_by_path_returns_none_for_unknown_file(tmp_path):
+    from src.storage.database import LocalDatabase
+
+    database = LocalDatabase(
+        tmp_path / "localdoc.db"
+    )
+
+    database.initialize()
+
+    result = database.find_document_by_path(
+        "/documents/unknown.pdf"
+    )
+
+    assert result is None

@@ -12,6 +12,19 @@ def process_pdf_pipeline(
     overlap: int = 1,
     database: LocalDatabase | None = None,
 ) -> list[EmbeddedChunk]:
+
+    if database is not None:
+        database.initialize()
+
+        existing_document_id = database.find_document_by_path(
+            str(pdf_path)
+        )
+
+        if existing_document_id is not None:
+            return database.load_embedded_chunks(
+                existing_document_id
+            )
+
     document = process_pdf(pdf_path)
 
     document = chunk_document(
@@ -26,8 +39,6 @@ def process_pdf_pipeline(
     )
 
     if database is not None:
-        database.initialize()
-
         database.save_document(
             document=document,
             embedded_chunks=embedded_chunks,

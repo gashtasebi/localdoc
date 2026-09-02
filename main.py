@@ -1,24 +1,22 @@
 import argparse
-
 from pathlib import Path
+
 from src.embedder import SentenceTransformerEmbedder
 from src.ollama_llm import OllamaLLM
 from src.pipeline import process_pdf_pipeline
 from src.qa import answer_question
+from src.storage.database import LocalDatabase
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description="Ask questions about a PDF document."
     )
-
     parser.add_argument(
         "pdf_path",
         help="Path to the PDF document",
     )
-
     return parser.parse_args()
-
 
 
 def validate_pdf_path(pdf_path: str) -> Path:
@@ -42,8 +40,6 @@ def validate_pdf_path(pdf_path: str) -> Path:
     return path
 
 
-
-
 def main():
     args = parse_arguments()
 
@@ -53,17 +49,21 @@ def main():
         print(f"Error: {error}")
         return
 
-
     print("Loading document...")
 
     embedder = SentenceTransformerEmbedder()
     llm = OllamaLLM()
+
+    database = LocalDatabase(
+        "data/localdoc.db"
+    )
 
     embedded_chunks = process_pdf_pipeline(
         str(pdf_path),
         embedder,
         chunk_size=5,
         overlap=1,
+        database=database,
     )
 
     print("Document loaded.")
