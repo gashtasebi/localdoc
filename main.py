@@ -1,5 +1,6 @@
 import argparse
 
+from pathlib import Path
 from src.embedder import SentenceTransformerEmbedder
 from src.ollama_llm import OllamaLLM
 from src.pipeline import process_pdf_pipeline
@@ -19,8 +20,39 @@ def parse_arguments():
     return parser.parse_args()
 
 
+
+def validate_pdf_path(pdf_path: str) -> Path:
+    path = Path(pdf_path)
+
+    if not path.exists():
+        raise FileNotFoundError(
+            f"PDF file not found: {pdf_path}"
+        )
+
+    if not path.is_file():
+        raise ValueError(
+            f"PDF path is not a file: {pdf_path}"
+        )
+
+    if path.suffix.lower() != ".pdf":
+        raise ValueError(
+            f"File is not a PDF: {pdf_path}"
+        )
+
+    return path
+
+
+
+
 def main():
     args = parse_arguments()
+
+    try:
+        pdf_path = validate_pdf_path(args.pdf_path)
+    except (FileNotFoundError, ValueError) as error:
+        print(f"Error: {error}")
+        return
+
 
     print("Loading document...")
 
@@ -28,7 +60,7 @@ def main():
     llm = OllamaLLM()
 
     embedded_chunks = process_pdf_pipeline(
-        args.pdf_path,
+        str(pdf_path),
         embedder,
         chunk_size=5,
         overlap=1,

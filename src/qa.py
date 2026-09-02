@@ -56,8 +56,16 @@ def answer_question(
 
     context = build_context(relevant_chunks)
 
-    return generate_answer(
+    answer = generate_answer(
         question=question,
         context=context,
         llm=llm,
     )
+
+    pages = sorted(
+        {item.chunk.page_number for item in relevant_chunks}
+    )
+
+    page_text = ", ".join(str(page) for page in pages)
+
+    return f"{answer}\n\nSource: Page {page_text}"
