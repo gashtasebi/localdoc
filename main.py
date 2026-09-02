@@ -10,7 +10,7 @@ from src.storage.database import LocalDatabase
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
-        description="Ask questions about a PDF document."
+        description="Ask questions about PDF documents."
     )
 
     parser.add_argument(
@@ -29,6 +29,12 @@ def parse_arguments():
         "--document",
         type=int,
         help="Select a document by its ID",
+    )
+
+    parser.add_argument(
+        "--import",
+        dest="import_path",
+        help="Import a PDF document into the document library",
     )
 
     return parser.parse_args()
@@ -64,6 +70,7 @@ def main():
 
     database.initialize()
 
+    # List documents
     if args.list:
         documents = database.list_documents()
 
@@ -79,6 +86,49 @@ def main():
 
         return
 
+    # Import a new document
+    if args.import_path:
+        try:
+            pdf_path = validate_pdf_path(
+                args.import_path
+            )
+        except (FileNotFoundError, ValueError) as error:
+            print(f"Error: {error}")
+            return
+
+        existing_document_id = database.find_document_by_path(
+            str(pdf_path)
+        )
+
+        if existing_document_id is not None:
+            print("Document already exists.")
+            print(
+                f"Document ID: {existing_document_id}"
+            )
+            return
+
+        print("Importing document...")
+
+        embedder = SentenceTransformerEmbedder()
+
+        process_pdf_pipeline(
+            str(pdf_path),
+            embedder,
+            chunk_size=5,
+            overlap=1,
+            database=database,
+        )
+
+        document_id = database.find_document_by_path(
+            str(pdf_path)
+        )
+
+        print("Document imported successfully.")
+        print(f"Document ID: {document_id}")
+
+        return
+
+    # Select an existing document
     if args.document is not None:
         document = database.get_document(
             args.document
@@ -99,6 +149,7 @@ def main():
             print(f"Error: {error}")
             return
 
+    # Use a PDF directly
     else:
         if not args.pdf_path:
             print("Error: PDF path is required.")
