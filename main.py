@@ -12,10 +12,19 @@ def parse_arguments():
     parser = argparse.ArgumentParser(
         description="Ask questions about a PDF document."
     )
+
     parser.add_argument(
         "pdf_path",
+        nargs="?",
         help="Path to the PDF document",
     )
+
+    parser.add_argument(
+        "--list",
+        action="store_true",
+        help="List documents in the document library",
+    )
+
     return parser.parse_args()
 
 
@@ -43,6 +52,31 @@ def validate_pdf_path(pdf_path: str) -> Path:
 def main():
     args = parse_arguments()
 
+    database = LocalDatabase(
+        "data/localdoc.db"
+    )
+
+    database.initialize()
+
+    if args.list:
+        documents = database.list_documents()
+
+        print("\nDocument Library:")
+
+        if not documents:
+            print("No documents found.")
+        else:
+            for document in documents:
+                print(
+                    f"{document['id']}: {document['file_path']}"
+                )
+
+        return
+
+    if not args.pdf_path:
+        print("Error: PDF path is required.")
+        return
+
     try:
         pdf_path = validate_pdf_path(args.pdf_path)
     except (FileNotFoundError, ValueError) as error:
@@ -53,42 +87,6 @@ def main():
 
     embedder = SentenceTransformerEmbedder()
     llm = OllamaLLM()
-
-    database = LocalDatabase(
-        "data/localdoc.db"
-    )
-
-
-    database = LocalDatabase(
-    "data/localdoc.db"
-    )
-
-    database.initialize()
-
-    documents = database.list_documents()
-
-    print("\nDocument Library:")
-
-    if not documents:
-        print("No documents found.")
-    else:
-        for document in documents:
-            print(
-                f"{document['id']}: {document['file_path']}"
-            )
-
-    embedded_chunks = process_pdf_pipeline(
-        str(pdf_path),
-        embedder,
-        chunk_size=5,
-        overlap=1,
-        database=database,
-    )
-
-
-
-
-
 
     embedded_chunks = process_pdf_pipeline(
         str(pdf_path),
