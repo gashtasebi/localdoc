@@ -25,6 +25,12 @@ def parse_arguments():
         help="List documents in the document library",
     )
 
+    parser.add_argument(
+        "--document",
+        type=int,
+        help="Select a document by its ID",
+    )
+
     return parser.parse_args()
 
 
@@ -73,15 +79,38 @@ def main():
 
         return
 
-    if not args.pdf_path:
-        print("Error: PDF path is required.")
-        return
+    if args.document is not None:
+        document = database.get_document(
+            args.document
+        )
 
-    try:
-        pdf_path = validate_pdf_path(args.pdf_path)
-    except (FileNotFoundError, ValueError) as error:
-        print(f"Error: {error}")
-        return
+        if document is None:
+            print(
+                f"Error: document with ID "
+                f"{args.document} not found."
+            )
+            return
+
+        try:
+            pdf_path = validate_pdf_path(
+                document["file_path"]
+            )
+        except (FileNotFoundError, ValueError) as error:
+            print(f"Error: {error}")
+            return
+
+    else:
+        if not args.pdf_path:
+            print("Error: PDF path is required.")
+            return
+
+        try:
+            pdf_path = validate_pdf_path(
+                args.pdf_path
+            )
+        except (FileNotFoundError, ValueError) as error:
+            print(f"Error: {error}")
+            return
 
     print("Loading document...")
 

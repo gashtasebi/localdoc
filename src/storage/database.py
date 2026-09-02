@@ -162,3 +162,27 @@ class LocalDatabase:
             )
 
         return embedded_chunks
+
+
+
+    def get_document(
+        self,
+        document_id: int,
+    ) -> dict | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                """
+                SELECT id, file_path
+                FROM documents
+                WHERE id = ?
+                """,
+                (document_id,),
+            ).fetchone()
+
+        if row is None:
+            return None
+
+        return {
+            "id": row[0],
+            "file_path": row[1],
+        }
