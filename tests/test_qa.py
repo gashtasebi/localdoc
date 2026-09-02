@@ -143,3 +143,33 @@ def test_build_context_includes_page_numbers():
     assert "[Page 5]" in context
     assert "Machine M42 requires regular maintenance." in context
     assert "Machine X10 is used for production." in context
+
+
+
+def test_answer_question_returns_unavailable_when_no_chunk_passes_threshold():
+    embedded_chunks = [
+        EmbeddedChunk(
+            chunk=Chunk(
+                chunk_id=1,
+                page_number=1,
+                text="Machine M42 requires regular maintenance.",
+            ),
+            vector=[0.0, 1.0],
+        ),
+    ]
+
+    llm = RecordingFakeLLM()
+
+    answer = answer_question(
+        question="What is the name of the CEO of Apple?",
+        embedded_chunks=embedded_chunks,
+        embedder=FakeEmbedder(),
+        llm=llm,
+        top_k=3,
+        min_similarity=0.2,
+    )
+
+    assert answer == (
+        "The answer is not available in the provided document."
+    )
+    assert llm.prompt is None

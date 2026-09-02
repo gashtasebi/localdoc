@@ -41,13 +41,18 @@ def answer_question(
     embedder,
     llm,
     top_k: int = 3,
+    min_similarity: float = 0.2,
 ) -> str:
     relevant_chunks = retrieve_by_text(
         query=question,
         embedded_chunks=embedded_chunks,
         embedder=embedder,
         top_k=top_k,
+        min_similarity=min_similarity,
     )
+
+    if not relevant_chunks:
+        return "The answer is not available in the provided document."
 
     context = build_context(relevant_chunks)
 
