@@ -1,0 +1,116 @@
+import json
+import sqlite3
+from pathlib import Path
+
+from src.models import Chunk, Document, EmbeddedChunk
+
+
+class LocalDatabase:
+    def __init__(self, db_path: str | Path):
+        self.db_path = Path(db_path)
+
+    def connect(self):
+        return sqlite3.connect(self.db_path)
+
+    def initialize(self):
+        with self.connect() as connection:
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS documents (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    file_path TEXT NOT NULL
+                )
+                """
+            )
+
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS chunks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    document_id INTEGER NOT NULL,
+                    chunk_id INTEGER NOT NULL,
+                    page_number INTEGER NOT NULL,
+                    text TEXT NOT NULL,
+                    vector TEXT NOT NULL,
+                    FOREIGN KEY (document_id)
+                        REFERENCES documents(id)
+                )
+                """
+            )
+
+    def save_document(
+        self,
+        document: Document,
+        embedded_chunks: list[EmbeddedChunk],
+        file_path: str = "",
+    ) -> int:
+        with self.connect() as connection:
+            cursor = connection.execute(
+                """
+                INSERT INTO documents (file_path)
+                VALUES (?)
+                """,
+                (file_path,),
+            )
+
+            document_id = cursor.lastrowid
+
+            for item in embedded_chunks:
+                connection.execute(
+                    """
+                    INSERT INTO chunks (
+                        document_id,
+                        chunk_id,
+                        page_number,
+                        text,
+                        vector
+                    )
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (
+                        document_id,
+                        item.chunk.chunk_id,
+                        item.chunk.page_number,
+                        item.chunk.text,
+                        json.dumps(item.vector),
+                    ),
+                )
+
+        return document_id
+
+    def load_embedded_chunks(
+        self,
+        document_id: int,
+    ) -> list[EmbeddedChunk]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT
+                    chunk_id,
+                    page_number,
+                    text,
+                    vector
+                FROM chunks
+                WHERE document_id = ?
+                ORDER BY chunk_id
+                """,
+                (document_id,),
+            ).fetchall()
+
+        embedded_chunks = []
+
+        for row in rows:
+            chunk_id, page_number, text, vector_json = row
+
+            embedded_chunks.append(
+                EmbeddedChunk(
+                    chunk=Chunk(
+                        chunk_id=chunk_id,
+                        page_number=page_number,
+                        text=text,
+                    ),
+                    vector=json.loads(vector_json),
+                )
+            )
+
+        return embedded_chunks

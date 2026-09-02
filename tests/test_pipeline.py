@@ -1,3 +1,5 @@
+
+from src.storage.database import LocalDatabase
 from src.chunker import chunk_document
 from src.embedder import process_document_embeddings
 from src.models import Document, Page
@@ -69,3 +71,47 @@ def test_process_pdf_pipeline(monkeypatch):
 
     assert len(result) > 0
     assert len(result[0].vector) == 3
+
+
+
+def test_process_pdf_pipeline_stores_document(tmp_path):
+    import fitz
+
+    from src.models import Document, Page
+    from src.pipeline import process_pdf_pipeline
+    from src.storage.database import LocalDatabase
+
+    class FakeEmbedder:
+        def embed(self, text):
+            return [0.1, 0.2, 0.3]
+
+    pdf_path = tmp_path / "document.pdf"
+
+    pdf = fitz.open()
+    page = pdf.new_page()
+    page.insert_text(
+        (72, 72),
+        "This is a test document for LocalDoc."
+    )
+    pdf.save(pdf_path)
+    pdf.close()
+
+    database = LocalDatabase(
+        tmp_path / "localdoc.db"
+    )
+
+    embedded_chunks = process_pdf_pipeline(
+        pdf_path=pdf_path,
+        embedder=FakeEmbedder(),
+        chunk_size=5,
+        overlap=1,
+        database=database,
+    )
+
+    assert embedded_chunks
+
+    loaded_chunks = database.load_embedded_chunks(1)
+
+    assert loaded_chunks
+    assert loaded_chunks[0].chunk.text
+    assert loaded_chunks[0].vector == [0.1, 0.2, 0.3]
