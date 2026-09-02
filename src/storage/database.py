@@ -186,3 +186,40 @@ class LocalDatabase:
             "id": row[0],
             "file_path": row[1],
         }
+
+
+
+    def delete_document(
+        self,
+        document_id: int,
+    ) -> bool:
+        with self.connect() as connection:
+            document = connection.execute(
+                """
+                SELECT id
+                FROM documents
+                WHERE id = ?
+                """,
+                (document_id,),
+            ).fetchone()
+
+            if document is None:
+                return False
+
+            connection.execute(
+                """
+                DELETE FROM chunks
+                WHERE document_id = ?
+                """,
+                (document_id,),
+            )
+
+            connection.execute(
+                """
+                DELETE FROM documents
+                WHERE id = ?
+                """,
+                (document_id,),
+            )
+
+        return True

@@ -234,3 +234,47 @@ def test_list_documents(tmp_path):
     assert len(documents) == 2
     assert documents[0]["file_path"] == "/documents/manual1.pdf"
     assert documents[1]["file_path"] == "/documents/manual2.pdf"
+
+
+
+from src.models import Chunk, Document, EmbeddedChunk
+from src.storage.database import LocalDatabase
+
+
+def test_delete_document(tmp_path):
+    database = LocalDatabase(
+        tmp_path / "test.db"
+    )
+    database.initialize()
+
+    document = Document(
+        pages=[],
+        chunks=[
+            Chunk(
+                chunk_id=1,
+                page_number=1,
+                text="Test document",
+            )
+        ],
+    )
+
+    embedded_chunks = [
+        EmbeddedChunk(
+            chunk=document.chunks[0],
+            vector=[0.1, 0.2, 0.3],
+        )
+    ]
+
+    document_id = database.save_document(
+        document=document,
+        embedded_chunks=embedded_chunks,
+        file_path="test.pdf",
+    )
+
+    assert database.get_document(document_id) is not None
+
+    deleted = database.delete_document(document_id)
+
+    assert deleted is True
+    assert database.get_document(document_id) is None
+    assert database.load_embedded_chunks(document_id) == []

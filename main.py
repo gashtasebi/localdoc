@@ -37,6 +37,13 @@ def parse_arguments():
         help="Import a PDF document into the document library",
     )
 
+    parser.add_argument(
+        "--delete",
+        type= int,
+        help= "Delete a document by its ID",
+    )
+
+
     return parser.parse_args()
 
 
@@ -85,6 +92,28 @@ def main():
                 )
 
         return
+
+
+
+    # Delete a document
+    if args.delete is not None:
+        deleted = database.delete_document(
+            args.delete
+        )
+
+        if deleted:
+            print(
+                f"Document {args.delete} deleted successfully."
+            )
+        else:
+            print(
+                f"Error: document with ID "
+                f"{args.delete} not found."
+            )
+
+        return
+
+
 
     # Import a new document
     if args.import_path:
