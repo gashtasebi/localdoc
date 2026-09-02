@@ -58,6 +58,38 @@ def main():
         "data/localdoc.db"
     )
 
+
+    database = LocalDatabase(
+    "data/localdoc.db"
+    )
+
+    database.initialize()
+
+    documents = database.list_documents()
+
+    print("\nDocument Library:")
+
+    if not documents:
+        print("No documents found.")
+    else:
+        for document in documents:
+            print(
+                f"{document['id']}: {document['file_path']}"
+            )
+
+    embedded_chunks = process_pdf_pipeline(
+        str(pdf_path),
+        embedder,
+        chunk_size=5,
+        overlap=1,
+        database=database,
+    )
+
+
+
+
+
+
     embedded_chunks = process_pdf_pipeline(
         str(pdf_path),
         embedder,
