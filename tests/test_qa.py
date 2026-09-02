@@ -110,3 +110,36 @@ def test_answer_question():
     assert "Which machine requires regular maintenance?" in llm.prompt
     assert "Machine M42 requires regular maintenance." in llm.prompt
     assert "Machine X10 is used for production." not in llm.prompt
+
+
+
+from src.models import Chunk, EmbeddedChunk
+from src.qa import build_context
+
+
+def test_build_context_includes_page_numbers():
+    embedded_chunks = [
+        EmbeddedChunk(
+            chunk=Chunk(
+                chunk_id=1,
+                page_number=3,
+                text="Machine M42 requires regular maintenance.",
+            ),
+            vector=[1.0, 0.0],
+        ),
+        EmbeddedChunk(
+            chunk=Chunk(
+                chunk_id=2,
+                page_number=5,
+                text="Machine X10 is used for production.",
+            ),
+            vector=[0.0, 1.0],
+        ),
+    ]
+
+    context = build_context(embedded_chunks)
+
+    assert "[Page 3]" in context
+    assert "[Page 5]" in context
+    assert "Machine M42 requires regular maintenance." in context
+    assert "Machine X10 is used for production." in context

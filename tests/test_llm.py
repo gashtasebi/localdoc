@@ -38,3 +38,18 @@ def test_generate_answer_sends_question_and_context_to_llm():
     assert answer == "Answer"
     assert "What is Python?" in llm.prompt
     assert "Python is a programming language." in llm.prompt
+
+
+
+def test_generate_answer_prompt_contains_grounding_rules():
+    llm = RecordingFakeLLM()
+
+    generate_answer(
+        question="What is Python?",
+        context="Python is a programming language.",
+        llm=llm,
+    )
+
+    assert "Use only information from the context." in llm.prompt
+    assert "Do not use outside knowledge." in llm.prompt
+    assert "The answer is not available in the provided document." in llm.prompt

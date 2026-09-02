@@ -5,10 +5,9 @@ def build_context(
     embedded_chunks: list[EmbeddedChunk],
 ) -> str:
     return "\n\n".join(
-        chunk.chunk.text
-        for chunk in embedded_chunks
+        f"[Page {item.chunk.page_number}]\n{item.chunk.text}"
+        for item in embedded_chunks
     )
-
 
 
 def build_prompt(
@@ -17,6 +16,12 @@ def build_prompt(
 ) -> str:
     return f"""Answer the question using only the provided context.
 
+Rules:
+- Use only information from the context.
+- Do not use outside knowledge.
+- If the answer is not contained in the context, say:
+  "The answer is not available in the provided document."
+
 Context:
 {context}
 
@@ -24,7 +29,6 @@ Question:
 {question}
 
 Answer:"""
-
 
 
 from src.llm import generate_answer
