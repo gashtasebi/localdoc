@@ -19,6 +19,7 @@ def retrieve(
     query_vector: list[float],
     embedded_chunks: list[EmbeddedChunk],
     top_k: int = 3,
+    min_similarity: float | None = None,
 ) -> list[EmbeddedChunk]:
 
     ranked = sorted(
@@ -30,8 +31,15 @@ def retrieve(
         reverse=True,
     )
 
-    return ranked[:top_k]
+    if min_similarity is not None:
+        ranked = [
+            item
+            for item in ranked
+            if cosine_similarity(query_vector, item.vector)
+            >= min_similarity
+        ]
 
+    return ranked[:top_k]
 
 
 def retrieve_by_text(
@@ -39,6 +47,7 @@ def retrieve_by_text(
     embedded_chunks: list[EmbeddedChunk],
     embedder,
     top_k: int = 3,
+    min_similarity: float | None = None,
 ) -> list[EmbeddedChunk]:
     query_vector = embedder.embed(query)
 
@@ -46,4 +55,5 @@ def retrieve_by_text(
         query_vector=query_vector,
         embedded_chunks=embedded_chunks,
         top_k=top_k,
+        min_similarity=min_similarity,
     )

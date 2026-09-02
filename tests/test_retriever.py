@@ -85,3 +85,76 @@ def test_retrieve_by_text():
 
     assert len(result) == 1
     assert result[0].chunk.text == "Python is a programming language."
+
+
+
+def test_retrieve_returns_most_relevant_chunk_first():
+    from src.models import Chunk, EmbeddedChunk
+    from src.retriever import retrieve
+
+    chunks = [
+        EmbeddedChunk(
+            chunk=Chunk(
+                chunk_id=1,
+                page_number=1,
+                text="Python is a programming language.",
+            ),
+            vector=[1.0, 0.0],
+        ),
+        EmbeddedChunk(
+            chunk=Chunk(
+                chunk_id=2,
+                page_number=2,
+                text="Machine M42 requires regular maintenance.",
+            ),
+            vector=[0.0, 1.0],
+        ),
+    ]
+
+    result = retrieve(
+        query_vector=[0.0, 1.0],
+        embedded_chunks=chunks,
+        top_k=1,
+    )
+
+    assert len(result) == 1
+    assert result[0].chunk.text == (
+        "Machine M42 requires regular maintenance."
+    )
+
+
+
+def test_retrieve_filters_by_min_similarity():
+    from src.models import Chunk, EmbeddedChunk
+    from src.retriever import retrieve
+
+    chunks = [
+        EmbeddedChunk(
+            chunk=Chunk(
+                chunk_id=1,
+                page_number=1,
+                text="Python is a programming language.",
+            ),
+            vector=[1.0, 0.0],
+        ),
+        EmbeddedChunk(
+            chunk=Chunk(
+                chunk_id=2,
+                page_number=2,
+                text="Machine M42 requires regular maintenance.",
+            ),
+            vector=[0.0, 1.0],
+        ),
+    ]
+
+    result = retrieve(
+        query_vector=[1.0, 0.0],
+        embedded_chunks=chunks,
+        top_k=3,
+        min_similarity=0.9,
+    )
+
+    assert len(result) == 1
+    assert result[0].chunk.text == (
+        "Python is a programming language."
+    )
