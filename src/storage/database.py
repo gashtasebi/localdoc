@@ -102,6 +102,30 @@ class LocalDatabase:
 
 
 
+    def list_documents(self) -> list[dict]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT id, file_path
+                FROM documents
+                ORDER BY id
+                """
+            ).fetchall()
+
+        return [
+            {
+                "id": row[0],
+                "file_path": row[1],
+            }
+            for row in rows
+        ]
+
+
+
+
+
+
+
     def load_embedded_chunks(
         self,
         document_id: int,

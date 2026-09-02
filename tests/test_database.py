@@ -201,3 +201,36 @@ def test_find_document_by_path_returns_none_for_unknown_file(tmp_path):
     )
 
     assert result is None
+
+
+
+def test_list_documents(tmp_path):
+    from src.models import Document
+    from src.storage.database import LocalDatabase
+
+    database = LocalDatabase(
+        tmp_path / "localdoc.db"
+    )
+
+    database.initialize()
+
+    document1 = Document(pages=[])
+    document2 = Document(pages=[])
+
+    database.save_document(
+        document=document1,
+        embedded_chunks=[],
+        file_path="/documents/manual1.pdf",
+    )
+
+    database.save_document(
+        document=document2,
+        embedded_chunks=[],
+        file_path="/documents/manual2.pdf",
+    )
+
+    documents = database.list_documents()
+
+    assert len(documents) == 2
+    assert documents[0]["file_path"] == "/documents/manual1.pdf"
+    assert documents[1]["file_path"] == "/documents/manual2.pdf"
