@@ -2,6 +2,7 @@ import json
 import sqlite3
 from pathlib import Path
 
+from src.file_utils import calculate_file_hash
 from src.models import Chunk, Document, EmbeddedChunk
 
 
@@ -63,6 +64,40 @@ class LocalDatabase:
                         REFERENCES documents(id)
                 )
                 """
+            )
+
+            self._backfill_file_hashes(connection)
+
+    def _backfill_file_hashes(
+        self,
+        connection: sqlite3.Connection,
+    ):
+        rows = connection.execute(
+            """
+            SELECT id, file_path
+            FROM documents
+            WHERE file_hash = ''
+            """
+        ).fetchall()
+
+        for document_id, file_path in rows:
+            path = Path(file_path)
+
+            if not path.exists() or not path.is_file():
+                continue
+
+            file_hash = calculate_file_hash(path)
+
+            connection.execute(
+                """
+                UPDATE documents
+                SET file_hash = ?
+                WHERE id = ?
+                """,
+                (
+                    file_hash,
+                    document_id,
+                ),
             )
 
     def save_document(

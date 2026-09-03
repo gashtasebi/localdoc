@@ -1,14 +1,22 @@
 import argparse
+
 from pathlib import Path
 
 from src.embedder import SentenceTransformerEmbedder
+
+from src.file_utils import calculate_file_hash
+
 from src.ollama_llm import OllamaLLM
+
 from src.pipeline import process_pdf_pipeline
+
 from src.qa import answer_question
+
 from src.storage.database import LocalDatabase
 
 
 def parse_arguments():
+
     parser = argparse.ArgumentParser(
         description="Ask questions about PDF documents."
     )
@@ -47,6 +55,7 @@ def parse_arguments():
 
 
 def validate_pdf_path(pdf_path: str) -> Path:
+
     path = Path(pdf_path)
 
     if not path.exists():
@@ -68,6 +77,7 @@ def validate_pdf_path(pdf_path: str) -> Path:
 
 
 def main():
+
     args = parse_arguments()
 
     database = LocalDatabase(
@@ -78,14 +88,17 @@ def main():
 
     # List documents
     if args.list:
+
         documents = database.list_documents()
 
         print("\nDocument Library:")
 
         if not documents:
             print("No documents found.")
+
         else:
             for document in documents:
+
                 title = document["title"]
 
                 if not title:
@@ -96,6 +109,7 @@ def main():
                 print(
                     f"\n{document['id']}: {title}"
                 )
+
                 print(
                     f"   Path: {document['file_path']}"
                 )
@@ -104,23 +118,36 @@ def main():
 
     # Import a new document
     if args.import_path:
+
         try:
             pdf_path = validate_pdf_path(
                 args.import_path
             )
+
         except (FileNotFoundError, ValueError) as error:
+
             print(f"Error: {error}")
+
             return
 
-        existing_document_id = database.find_document_by_path(
-            str(pdf_path)
+        file_hash = calculate_file_hash(
+            pdf_path
+        )
+
+        existing_document_id = (
+            database.find_document_by_hash(
+                file_hash
+            )
         )
 
         if existing_document_id is not None:
+
             print("Document already exists.")
+
             print(
                 f"Document ID: {existing_document_id}"
             )
+
             return
 
         print("Importing document...")
@@ -135,26 +162,33 @@ def main():
             database=database,
         )
 
-        document_id = database.find_document_by_path(
-            str(pdf_path)
+        document_id = database.find_document_by_hash(
+            file_hash
         )
 
         print("Document imported successfully.")
-        print(f"Document ID: {document_id}")
+
+        print(
+            f"Document ID: {document_id}"
+        )
 
         return
 
     # Delete a document
     if args.delete is not None:
+
         deleted = database.delete_document(
             args.delete
         )
 
         if deleted:
+
             print(
                 f"Document {args.delete} deleted successfully."
             )
+
         else:
+
             print(
                 f"Error: document with ID "
                 f"{args.delete} not found."
@@ -164,20 +198,24 @@ def main():
 
     # Select an existing document
     if args.document is not None:
+
         document = database.get_document(
             args.document
         )
 
         if document is None:
+
             print(
                 f"Error: document with ID "
                 f"{args.document} not found."
             )
+
             return
 
         title = document["title"]
 
         if not title:
+
             title = Path(
                 document["file_path"]
             ).stem
@@ -187,30 +225,42 @@ def main():
         )
 
         try:
+
             pdf_path = validate_pdf_path(
                 document["file_path"]
             )
+
         except (FileNotFoundError, ValueError) as error:
+
             print(f"Error: {error}")
+
             return
 
     # Use a PDF directly
     else:
+
         if not args.pdf_path:
+
             print("Error: PDF path is required.")
+
             return
 
         try:
+
             pdf_path = validate_pdf_path(
                 args.pdf_path
             )
+
         except (FileNotFoundError, ValueError) as error:
+
             print(f"Error: {error}")
+
             return
 
     print("Loading document...")
 
     embedder = SentenceTransformerEmbedder()
+
     llm = OllamaLLM()
 
     embedded_chunks = process_pdf_pipeline(
@@ -222,17 +272,23 @@ def main():
     )
 
     print("Document loaded.")
+
     print("Ask questions about the document.")
+
     print("Type 'exit' to quit.")
 
     while True:
+
         question = input("\nQuestion: ")
 
         if question.lower() == "exit":
+
             print("Goodbye!")
+
             break
 
         if not question.strip():
+
             continue
 
         answer = answer_question(
@@ -245,8 +301,10 @@ def main():
         )
 
         print("\nAnswer:")
+
         print(answer)
 
 
 if __name__ == "__main__":
+
     main()
