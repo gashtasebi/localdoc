@@ -175,6 +175,17 @@ def main():
             )
             return
 
+        title = document["title"]
+
+        if not title:
+            title = Path(
+                document["file_path"]
+            ).stem
+
+        print(
+            f"Selected document: {title}"
+        )
+
         try:
             pdf_path = validate_pdf_path(
                 document["file_path"]
