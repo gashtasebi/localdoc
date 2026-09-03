@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from src.chunker import chunk_document
 from src.document_processor import process_pdf
 from src.embedder import process_document_embeddings
@@ -39,10 +41,13 @@ def process_pdf_pipeline(
     )
 
     if database is not None:
+        title = Path(pdf_path).stem
+
         database.save_document(
             document=document,
             embedded_chunks=embedded_chunks,
             file_path=str(pdf_path),
+            title=title,
         )
 
     return embedded_chunks
