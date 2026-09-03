@@ -3,6 +3,7 @@ from pathlib import Path
 from src.chunker import chunk_document
 from src.document_processor import process_pdf
 from src.embedder import process_document_embeddings
+from src.file_utils import calculate_file_hash
 from src.models import EmbeddedChunk
 from src.storage.database import LocalDatabase
 
@@ -15,11 +16,13 @@ def process_pdf_pipeline(
     database: LocalDatabase | None = None,
 ) -> list[EmbeddedChunk]:
 
+    file_hash = calculate_file_hash(pdf_path)
+
     if database is not None:
         database.initialize()
 
-        existing_document_id = database.find_document_by_path(
-            str(pdf_path)
+        existing_document_id = database.find_document_by_hash(
+            file_hash
         )
 
         if existing_document_id is not None:
@@ -48,6 +51,7 @@ def process_pdf_pipeline(
             embedded_chunks=embedded_chunks,
             file_path=str(pdf_path),
             title=title,
+            file_hash=file_hash,
         )
 
     return embedded_chunks

@@ -1,19 +1,21 @@
+from pathlib import Path
 
-from src.storage.database import LocalDatabase
 from src.chunker import chunk_document
 from src.embedder import process_document_embeddings
+from src.file_utils import calculate_file_hash
 from src.models import Document, Page
 from src.pipeline import process_pdf_pipeline
-from src.retriever import retrieve_by_text
-from src.embedder import SentenceTransformerEmbedder
+from src.storage.database import LocalDatabase
 
 
 class FakeEmbedder:
+
     def embed(self, text: str) -> list[float]:
         return [0.1, 0.2, 0.3]
 
 
 def test_document_to_embeddings_pipeline():
+
     document = Document(
         pages=[
             Page(
@@ -41,9 +43,7 @@ def test_document_to_embeddings_pipeline():
     assert len(embedded_chunks[0].vector) == 3
 
 
-
 def test_process_pdf_pipeline(monkeypatch):
-    from src.pipeline import process_pdf_pipeline
 
     document = Document(
         pages=[
@@ -73,26 +73,21 @@ def test_process_pdf_pipeline(monkeypatch):
     assert len(result[0].vector) == 3
 
 
-
 def test_process_pdf_pipeline_stores_document(tmp_path):
+
     import fitz
-
-    from src.models import Document, Page
-    from src.pipeline import process_pdf_pipeline
-    from src.storage.database import LocalDatabase
-
-    class FakeEmbedder:
-        def embed(self, text):
-            return [0.1, 0.2, 0.3]
 
     pdf_path = tmp_path / "document.pdf"
 
     pdf = fitz.open()
+
     page = pdf.new_page()
+
     page.insert_text(
         (72, 72),
-        "This is a test document for LocalDoc."
+        "This is a test document for LocalDoc.",
     )
+
     pdf.save(pdf_path)
     pdf.close()
 
@@ -117,14 +112,14 @@ def test_process_pdf_pipeline_stores_document(tmp_path):
     assert loaded_chunks[0].vector == [0.1, 0.2, 0.3]
 
 
+def test_process_pdf_pipeline_does_not_embed_existing_document(
+    tmp_path,
+):
 
-def test_process_pdf_pipeline_does_not_embed_existing_document(tmp_path):
     import fitz
 
-    from src.pipeline import process_pdf_pipeline
-    from src.storage.database import LocalDatabase
-
     class CountingEmbedder:
+
         def __init__(self):
             self.calls = 0
 
@@ -135,11 +130,14 @@ def test_process_pdf_pipeline_does_not_embed_existing_document(tmp_path):
     pdf_path = tmp_path / "document.pdf"
 
     pdf = fitz.open()
+
     page = pdf.new_page()
+
     page.insert_text(
         (72, 72),
-        "This is a test document for LocalDoc."
+        "This is a test document for LocalDoc.",
     )
+
     pdf.save(pdf_path)
     pdf.close()
 
@@ -170,3 +168,46 @@ def test_process_pdf_pipeline_does_not_embed_existing_document(tmp_path):
     assert first_call_count > 0
     assert embedder.calls == first_call_count
     assert second_result == first_result
+
+
+def test_same_file_content_is_detected_by_hash(tmp_path):
+
+    database = LocalDatabase(
+        tmp_path / "localdoc.db"
+    )
+
+    pdf_path = Path("data/test_document.pdf")
+
+    first_hash = calculate_file_hash(
+        pdf_path
+    )
+
+    second_file = tmp_path / "copy.pdf"
+
+    second_file.write_bytes(
+        pdf_path.read_bytes()
+    )
+
+    second_hash = calculate_file_hash(
+        second_file
+    )
+
+    assert first_hash == second_hash
+
+    database.initialize()
+
+    database.save_document(
+        document=None,
+        embedded_chunks=[],
+        file_path=str(pdf_path),
+        title="test_document",
+        file_hash=first_hash,
+    )
+
+    existing_document_id = (
+        database.find_document_by_hash(
+            second_hash
+        )
+    )
+
+    assert existing_document_id == 1
