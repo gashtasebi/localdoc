@@ -19,7 +19,8 @@ class LocalDatabase:
                 CREATE TABLE IF NOT EXISTS documents (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     file_path TEXT NOT NULL,
-                    title TEXT NOT NULL DEFAULT ''
+                    title TEXT NOT NULL DEFAULT '',
+                    file_hash TEXT NOT NULL DEFAULT ''
                 )
                 """
             )
@@ -38,6 +39,14 @@ class LocalDatabase:
                     """
                     ALTER TABLE documents
                     ADD COLUMN title TEXT NOT NULL DEFAULT ''
+                    """
+                )
+
+            if "file_hash" not in column_names:
+                connection.execute(
+                    """
+                    ALTER TABLE documents
+                    ADD COLUMN file_hash TEXT NOT NULL DEFAULT ''
                     """
                 )
 
@@ -62,14 +71,23 @@ class LocalDatabase:
         embedded_chunks: list[EmbeddedChunk],
         file_path: str = "",
         title: str = "",
+        file_hash: str = "",
     ) -> int:
         with self.connect() as connection:
             cursor = connection.execute(
                 """
-                INSERT INTO documents (file_path, title)
-                VALUES (?, ?)
+                INSERT INTO documents (
+                    file_path,
+                    title,
+                    file_hash
+                )
+                VALUES (?, ?, ?)
                 """,
-                (file_path, title),
+                (
+                    file_path,
+                    title,
+                    file_hash,
+                ),
             )
 
             document_id = cursor.lastrowid
@@ -118,11 +136,32 @@ class LocalDatabase:
 
         return row[0]
 
+    def find_document_by_hash(
+        self,
+        file_hash: str,
+    ) -> int | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                """
+                SELECT id
+                FROM documents
+                WHERE file_hash = ?
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                (file_hash,),
+            ).fetchone()
+
+        if row is None:
+            return None
+
+        return row[0]
+
     def list_documents(self) -> list[dict]:
         with self.connect() as connection:
             rows = connection.execute(
                 """
-                SELECT id, file_path, title
+                SELECT id, file_path, title, file_hash
                 FROM documents
                 ORDER BY id
                 """
@@ -133,6 +172,7 @@ class LocalDatabase:
                 "id": row[0],
                 "file_path": row[1],
                 "title": row[2],
+                "file_hash": row[3],
             }
             for row in rows
         ]
@@ -181,7 +221,7 @@ class LocalDatabase:
         with self.connect() as connection:
             row = connection.execute(
                 """
-                SELECT id, file_path, title
+                SELECT id, file_path, title, file_hash
                 FROM documents
                 WHERE id = ?
                 """,
@@ -195,6 +235,7 @@ class LocalDatabase:
             "id": row[0],
             "file_path": row[1],
             "title": row[2],
+            "file_hash": row[3],
         }
 
     def delete_document(
