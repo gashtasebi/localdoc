@@ -39,10 +39,9 @@ def parse_arguments():
 
     parser.add_argument(
         "--delete",
-        type= int,
-        help= "Delete a document by its ID",
+        type=int,
+        help="Delete a document by its ID",
     )
-
 
     return parser.parse_args()
 
@@ -87,33 +86,21 @@ def main():
             print("No documents found.")
         else:
             for document in documents:
+                title = document["title"]
+
+                if not title:
+                    title = Path(
+                        document["file_path"]
+                    ).stem
+
                 print(
-                    f"{document['id']}: {document['file_path']}"
+                    f"\n{document['id']}: {title}"
+                )
+                print(
+                    f"   Path: {document['file_path']}"
                 )
 
         return
-
-
-
-    # Delete a document
-    if args.delete is not None:
-        deleted = database.delete_document(
-            args.delete
-        )
-
-        if deleted:
-            print(
-                f"Document {args.delete} deleted successfully."
-            )
-        else:
-            print(
-                f"Error: document with ID "
-                f"{args.delete} not found."
-            )
-
-        return
-
-
 
     # Import a new document
     if args.import_path:
@@ -154,6 +141,24 @@ def main():
 
         print("Document imported successfully.")
         print(f"Document ID: {document_id}")
+
+        return
+
+    # Delete a document
+    if args.delete is not None:
+        deleted = database.delete_document(
+            args.delete
+        )
+
+        if deleted:
+            print(
+                f"Document {args.delete} deleted successfully."
+            )
+        else:
+            print(
+                f"Error: document with ID "
+                f"{args.delete} not found."
+            )
 
         return
 
