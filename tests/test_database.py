@@ -278,3 +278,30 @@ def test_delete_document(tmp_path):
     assert deleted is True
     assert database.get_document(document_id) is None
     assert database.load_embedded_chunks(document_id) == []
+
+
+
+def test_save_document_with_title(tmp_path):
+    database = LocalDatabase(
+        tmp_path / "test.db"
+    )
+    database.initialize()
+
+    document = Document(
+        pages=[],
+        chunks=[],
+    )
+
+    document_id = database.save_document(
+        document=document,
+        embedded_chunks=[],
+        file_path="test.pdf",
+        title="Test Document",
+    )
+
+    saved_document = database.get_document(
+        document_id
+    )
+
+    assert saved_document is not None
+    assert saved_document["title"] == "Test Document"

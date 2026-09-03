@@ -18,10 +18,28 @@ class LocalDatabase:
                 """
                 CREATE TABLE IF NOT EXISTS documents (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    file_path TEXT NOT NULL
+                    file_path TEXT NOT NULL,
+                    title TEXT NOT NULL DEFAULT ''
                 )
                 """
             )
+
+            columns = connection.execute(
+                "PRAGMA table_info(documents)"
+            ).fetchall()
+
+            column_names = {
+                column[1]
+                for column in columns
+            }
+
+            if "title" not in column_names:
+                connection.execute(
+                    """
+                    ALTER TABLE documents
+                    ADD COLUMN title TEXT NOT NULL DEFAULT ''
+                    """
+                )
 
             connection.execute(
                 """
@@ -43,14 +61,15 @@ class LocalDatabase:
         document: Document,
         embedded_chunks: list[EmbeddedChunk],
         file_path: str = "",
+        title: str = "",
     ) -> int:
         with self.connect() as connection:
             cursor = connection.execute(
                 """
-                INSERT INTO documents (file_path)
-                VALUES (?)
+                INSERT INTO documents (file_path, title)
+                VALUES (?, ?)
                 """,
-                (file_path,),
+                (file_path, title),
             )
 
             document_id = cursor.lastrowid
@@ -78,7 +97,6 @@ class LocalDatabase:
 
         return document_id
 
-
     def find_document_by_path(
         self,
         file_path: str,
@@ -100,13 +118,11 @@ class LocalDatabase:
 
         return row[0]
 
-
-
     def list_documents(self) -> list[dict]:
         with self.connect() as connection:
             rows = connection.execute(
                 """
-                SELECT id, file_path
+                SELECT id, file_path, title
                 FROM documents
                 ORDER BY id
                 """
@@ -116,15 +132,10 @@ class LocalDatabase:
             {
                 "id": row[0],
                 "file_path": row[1],
+                "title": row[2],
             }
             for row in rows
         ]
-
-
-
-
-
-
 
     def load_embedded_chunks(
         self,
@@ -163,8 +174,6 @@ class LocalDatabase:
 
         return embedded_chunks
 
-
-
     def get_document(
         self,
         document_id: int,
@@ -172,7 +181,7 @@ class LocalDatabase:
         with self.connect() as connection:
             row = connection.execute(
                 """
-                SELECT id, file_path
+                SELECT id, file_path, title
                 FROM documents
                 WHERE id = ?
                 """,
@@ -185,9 +194,8 @@ class LocalDatabase:
         return {
             "id": row[0],
             "file_path": row[1],
+            "title": row[2],
         }
-
-
 
     def delete_document(
         self,
