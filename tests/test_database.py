@@ -1,10 +1,11 @@
-from src.storage.database import LocalDatabase
 from src.models import Chunk, Document, EmbeddedChunk
+from src.storage.database import LocalDatabase
+
 
 def test_initialize_creates_database_tables(tmp_path):
     db_path = tmp_path / "localdoc.db"
-
     database = LocalDatabase(db_path)
+
     database.initialize()
 
     assert db_path.exists()
@@ -24,11 +25,10 @@ def test_initialize_creates_database_tables(tmp_path):
     assert "chunks" in table_names
 
 
-
 def test_save_document_stores_chunks_and_vectors(tmp_path):
     db_path = tmp_path / "localdoc.db"
-
     database = LocalDatabase(db_path)
+
     database.initialize()
 
     document = Document(
@@ -89,11 +89,10 @@ def test_save_document_stores_chunks_and_vectors(tmp_path):
     assert rows[1][2] == 3
 
 
-
 def test_load_embedded_chunks(tmp_path):
     db_path = tmp_path / "localdoc.db"
-
     database = LocalDatabase(db_path)
+
     database.initialize()
 
     document = Document(
@@ -146,11 +145,7 @@ def test_load_embedded_chunks(tmp_path):
     assert loaded_chunks[1].vector == [0.4, 0.5, 0.6]
 
 
-
 def test_find_document_by_path(tmp_path):
-    from src.models import Chunk, Document, EmbeddedChunk
-    from src.storage.database import LocalDatabase
-
     database = LocalDatabase(
         tmp_path / "localdoc.db"
     )
@@ -187,9 +182,9 @@ def test_find_document_by_path(tmp_path):
     assert found_id == document_id
 
 
-def test_find_document_by_path_returns_none_for_unknown_file(tmp_path):
-    from src.storage.database import LocalDatabase
-
+def test_find_document_by_path_returns_none_for_unknown_file(
+    tmp_path,
+):
     database = LocalDatabase(
         tmp_path / "localdoc.db"
     )
@@ -203,11 +198,7 @@ def test_find_document_by_path_returns_none_for_unknown_file(tmp_path):
     assert result is None
 
 
-
 def test_list_documents(tmp_path):
-    from src.models import Document
-    from src.storage.database import LocalDatabase
-
     database = LocalDatabase(
         tmp_path / "localdoc.db"
     )
@@ -232,19 +223,20 @@ def test_list_documents(tmp_path):
     documents = database.list_documents()
 
     assert len(documents) == 2
-    assert documents[0]["file_path"] == "/documents/manual1.pdf"
-    assert documents[1]["file_path"] == "/documents/manual2.pdf"
 
-
-
-from src.models import Chunk, Document, EmbeddedChunk
-from src.storage.database import LocalDatabase
+    assert documents[0]["file_path"] == (
+        "/documents/manual1.pdf"
+    )
+    assert documents[1]["file_path"] == (
+        "/documents/manual2.pdf"
+    )
 
 
 def test_delete_document(tmp_path):
     database = LocalDatabase(
         tmp_path / "test.db"
     )
+
     database.initialize()
 
     document = Document(
@@ -280,11 +272,11 @@ def test_delete_document(tmp_path):
     assert database.load_embedded_chunks(document_id) == []
 
 
-
 def test_save_document_with_title(tmp_path):
     database = LocalDatabase(
         tmp_path / "test.db"
     )
+
     database.initialize()
 
     document = Document(
@@ -305,3 +297,54 @@ def test_save_document_with_title(tmp_path):
 
     assert saved_document is not None
     assert saved_document["title"] == "Test Document"
+
+
+def test_list_documents_includes_chunk_count(tmp_path):
+    database = LocalDatabase(
+        tmp_path / "localdoc.db"
+    )
+
+    database.initialize()
+
+    document = Document(pages=[])
+
+    embedded_chunks = [
+        EmbeddedChunk(
+            chunk=Chunk(
+                chunk_id=1,
+                page_number=1,
+                text="First chunk",
+            ),
+            vector=[0.1, 0.2, 0.3],
+        ),
+        EmbeddedChunk(
+            chunk=Chunk(
+                chunk_id=2,
+                page_number=2,
+                text="Second chunk",
+            ),
+            vector=[0.4, 0.5, 0.6],
+        ),
+        EmbeddedChunk(
+            chunk=Chunk(
+                chunk_id=3,
+                page_number=2,
+                text="Third chunk",
+            ),
+            vector=[0.7, 0.8, 0.9],
+        ),
+    ]
+
+    document_id = database.save_document(
+        document=document,
+        embedded_chunks=embedded_chunks,
+        file_path="/documents/manual.pdf",
+        title="Manual",
+    )
+
+    documents = database.list_documents()
+
+    assert len(documents) == 1
+    assert documents[0]["id"] == document_id
+    assert documents[0]["title"] == "Manual"
+    assert documents[0]["chunk_count"] == 3

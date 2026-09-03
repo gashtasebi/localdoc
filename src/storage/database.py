@@ -196,9 +196,21 @@ class LocalDatabase:
         with self.connect() as connection:
             rows = connection.execute(
                 """
-                SELECT id, file_path, title, file_hash
-                FROM documents
-                ORDER BY id
+                SELECT
+                    d.id,
+                    d.file_path,
+                    d.title,
+                    d.file_hash,
+                    COUNT(c.id) AS chunk_count
+                FROM documents AS d
+                LEFT JOIN chunks AS c
+                    ON c.document_id = d.id
+                GROUP BY
+                    d.id,
+                    d.file_path,
+                    d.title,
+                    d.file_hash
+                ORDER BY d.id
                 """
             ).fetchall()
 
@@ -208,6 +220,7 @@ class LocalDatabase:
                 "file_path": row[1],
                 "title": row[2],
                 "file_hash": row[3],
+                "chunk_count": row[4],
             }
             for row in rows
         ]
@@ -256,7 +269,11 @@ class LocalDatabase:
         with self.connect() as connection:
             row = connection.execute(
                 """
-                SELECT id, file_path, title, file_hash
+                SELECT
+                    id,
+                    file_path,
+                    title,
+                    file_hash
                 FROM documents
                 WHERE id = ?
                 """,
