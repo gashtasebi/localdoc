@@ -378,3 +378,17 @@ def test_get_document_returns_metadata(tmp_path):
     )
     assert saved_document["title"] == "User Manual"
     assert saved_document["file_hash"] == "abc123"
+
+
+
+def test_list_documents_returns_empty_list_for_empty_database(
+    tmp_path,
+):
+    database = LocalDatabase(
+        tmp_path / "test.db"
+    )
+    database.initialize()
+
+    documents = database.list_documents()
+
+    assert documents == []
