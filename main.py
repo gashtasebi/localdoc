@@ -1,12 +1,13 @@
 import argparse
+
 from pathlib import Path
 
 from src.embedder import SentenceTransformerEmbedder
 from src.ollama_llm import OllamaLLM
 from src.pipeline import process_pdf_pipeline
 from src.qa import answer_question
+from src.services.document_service import DocumentService
 from src.storage.database import LocalDatabase
-from src.file_utils import calculate_file_hash
 
 
 def parse_arguments():
@@ -74,8 +75,10 @@ def main():
     database = LocalDatabase("data/localdoc.db")
     database.initialize()
 
+    document_service = DocumentService(database)
+
     if args.list:
-        documents = database.list_documents()
+        documents = document_service.list_documents()
 
         print("\nDocument Library:")
 
@@ -90,13 +93,18 @@ def main():
                         document["file_path"]
                     ).stem
 
-                print(f"\n{document['id']}: {title}")
+                print(
+                    f"\n{document['id']}: {title}"
+                )
+
                 print(
                     f"   Path: {document['file_path']}"
                 )
+
                 print(
                     f"   Pages: {document['page_count']}"
                 )
+
                 print(
                     f"   Chunks: {document['chunk_count']}"
                 )
@@ -108,38 +116,14 @@ def main():
             pdf_path = validate_pdf_path(
                 args.import_path
             )
+
+            document_id = document_service.import_pdf(
+                pdf_path
+            )
+
         except (FileNotFoundError, ValueError) as error:
             print(f"Error: {error}")
             return
-
-        file_hash = calculate_file_hash(pdf_path)
-
-        existing_document_id = (
-            database.find_document_by_hash(file_hash)
-        )
-
-        if existing_document_id is not None:
-            print("Document already exists.")
-            print(
-                f"Document ID: {existing_document_id}"
-            )
-            return
-
-        print("Importing document...")
-
-        embedder = SentenceTransformerEmbedder()
-
-        process_pdf_pipeline(
-            str(pdf_path),
-            embedder,
-            chunk_size=5,
-            overlap=1,
-            database=database,
-        )
-
-        document_id = database.find_document_by_hash(
-            file_hash
-        )
 
         print("Document imported successfully.")
         print(f"Document ID: {document_id}")
@@ -147,7 +131,7 @@ def main():
         return
 
     if args.delete is not None:
-        deleted = database.delete_document(
+        deleted = document_service.delete_document(
             args.delete
         )
 
@@ -163,13 +147,15 @@ def main():
         return
 
     if args.document is not None:
-        document = database.get_document(
-            args.document
-        )
+        try:
+            document = document_service.load_document(
+                args.document
+            )
 
-        if document is None:
+        except ValueError:
             print(
-                f"Error: document with ID {args.document} not found."
+                f"Error: document with ID "
+                f"{args.document} not found"
             )
             return
 
@@ -180,12 +166,15 @@ def main():
                 document["file_path"]
             ).stem
 
-        print(f"Selected document: {title}")
+        print(
+            f"Selected document: {title}"
+        )
 
         try:
             pdf_path = validate_pdf_path(
                 document["file_path"]
             )
+
         except (FileNotFoundError, ValueError) as error:
             print(f"Error: {error}")
             return
@@ -199,6 +188,7 @@ def main():
             pdf_path = validate_pdf_path(
                 args.pdf_path
             )
+
         except (FileNotFoundError, ValueError) as error:
             print(f"Error: {error}")
             return
