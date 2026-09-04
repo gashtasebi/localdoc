@@ -90,14 +90,13 @@ def main():
                         document["file_path"]
                     ).stem
 
-                print(
-                    f"\n{document['id']}: {title}"
-                )
-
+                print(f"\n{document['id']}: {title}")
                 print(
                     f"   Path: {document['file_path']}"
                 )
-
+                print(
+                    f"   Pages: {document['page_count']}"
+                )
                 print(
                     f"   Chunks: {document['chunk_count']}"
                 )
@@ -181,9 +180,7 @@ def main():
                 document["file_path"]
             ).stem
 
-        print(
-            f"Selected document: {title}"
-        )
+        print(f"Selected document: {title}")
 
         try:
             pdf_path = validate_pdf_path(

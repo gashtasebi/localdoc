@@ -76,6 +76,7 @@ class LocalDatabase:
             )
 
             self._backfill_file_hashes(connection)
+            self._backfill_page_counts(connection)
 
     def _backfill_file_hashes(
         self,
@@ -105,6 +106,45 @@ class LocalDatabase:
                 """,
                 (
                     file_hash,
+                    document_id,
+                ),
+            )
+
+    def _backfill_page_counts(
+        self,
+        connection: sqlite3.Connection,
+    ):
+        rows = connection.execute(
+            """
+            SELECT id
+            FROM documents
+            WHERE page_count = 0
+            """
+        ).fetchall()
+
+        for (document_id,) in rows:
+            row = connection.execute(
+                """
+                SELECT MAX(page_number)
+                FROM chunks
+                WHERE document_id = ?
+                """,
+                (document_id,),
+            ).fetchone()
+
+            max_page_number = row[0]
+
+            if max_page_number is None:
+                continue
+
+            connection.execute(
+                """
+                UPDATE documents
+                SET page_count = ?
+                WHERE id = ?
+                """,
+                (
+                    max_page_number,
                     document_id,
                 ),
             )
