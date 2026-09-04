@@ -269,7 +269,7 @@ class LocalDatabase:
                     documents.title,
                     documents.file_hash,
                     documents.page_count
-                ORDER BY documents.id
+                ORDER BY documents.id DESC
                 """
             ).fetchall()
 

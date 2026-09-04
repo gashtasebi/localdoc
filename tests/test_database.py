@@ -447,3 +447,33 @@ def test_legacy_page_count_is_backfilled(tmp_path):
 
     assert document is not None
     assert document["page_count"] == 3
+
+
+
+def test_list_documents_returns_newest_document_first(tmp_path):
+    db_path = tmp_path / "test.db"
+    database = LocalDatabase(db_path)
+    database.initialize()
+
+    first_id = database.save_document(
+        document=create_document(),
+        embedded_chunks=create_embedded_chunks(),
+        file_path="/documents/older.pdf",
+        title="Older Document",
+        file_hash="hash-older",
+    )
+
+    second_id = database.save_document(
+        document=create_document(),
+        embedded_chunks=create_embedded_chunks(),
+        file_path="/documents/newer.pdf",
+        title="Newer Document",
+        file_hash="hash-newer",
+    )
+
+    documents = database.list_documents()
+
+    assert documents[0]["id"] == second_id
+    assert documents[1]["id"] == first_id
+
+
