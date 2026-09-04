@@ -77,7 +77,6 @@ def test_save_document_stores_chunks_and_vectors(tmp_path):
         ).fetchall()
 
     assert len(rows) == 2
-
     assert rows[0][0] == 1
     assert rows[0][1] == 1
     assert rows[0][2] == 2
@@ -227,6 +226,7 @@ def test_list_documents(tmp_path):
     assert documents[0]["file_path"] == (
         "/documents/manual1.pdf"
     )
+
     assert documents[1]["file_path"] == (
         "/documents/manual2.pdf"
     )
@@ -301,7 +301,7 @@ def test_save_document_with_title(tmp_path):
 
 def test_list_documents_includes_chunk_count(tmp_path):
     database = LocalDatabase(
-        tmp_path / "localdoc.db"
+        tmp_path / "test.db"
     )
 
     database.initialize()
@@ -348,3 +348,33 @@ def test_list_documents_includes_chunk_count(tmp_path):
     assert documents[0]["id"] == document_id
     assert documents[0]["title"] == "Manual"
     assert documents[0]["chunk_count"] == 3
+
+
+def test_get_document_returns_metadata(tmp_path):
+    database = LocalDatabase(
+        tmp_path / "test.db"
+    )
+
+    database.initialize()
+
+    document = Document(pages=[])
+
+    document_id = database.save_document(
+        document=document,
+        embedded_chunks=[],
+        file_path="/documents/manual.pdf",
+        title="User Manual",
+        file_hash="abc123",
+    )
+
+    saved_document = database.get_document(
+        document_id
+    )
+
+    assert saved_document is not None
+    assert saved_document["id"] == document_id
+    assert saved_document["file_path"] == (
+        "/documents/manual.pdf"
+    )
+    assert saved_document["title"] == "User Manual"
+    assert saved_document["file_hash"] == "abc123"
