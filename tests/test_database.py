@@ -1,4 +1,4 @@
-from src.models import Chunk, Document, EmbeddedChunk
+from src.models import Chunk, Document, EmbeddedChunk, Page
 from src.storage.database import LocalDatabase
 
 
@@ -392,3 +392,31 @@ def test_list_documents_returns_empty_list_for_empty_database(
     documents = database.list_documents()
 
     assert documents == []
+
+
+
+def test_list_documents_includes_page_count(tmp_path):
+    database = LocalDatabase(
+        tmp_path / "test.db"
+    )
+    database.initialize()
+
+    document = Document(
+        pages=[
+            Page(page_number=1, text="First page"),
+            Page(page_number=2, text="Second page"),
+            Page(page_number=3, text="Third page"),
+        ]
+    )
+
+    database.save_document(
+        document=document,
+        embedded_chunks=[],
+        file_path="/documents/manual.pdf",
+        title="Manual",
+    )
+
+    documents = database.list_documents()
+
+    assert len(documents) == 1
+    assert documents[0]["page_count"] == 3

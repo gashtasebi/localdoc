@@ -21,7 +21,8 @@ class LocalDatabase:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     file_path TEXT NOT NULL,
                     title TEXT NOT NULL DEFAULT '',
-                    file_hash TEXT NOT NULL DEFAULT ''
+                    file_hash TEXT NOT NULL DEFAULT '',
+                    page_count INTEGER NOT NULL DEFAULT 0
                 )
                 """
             )
@@ -48,6 +49,14 @@ class LocalDatabase:
                     """
                     ALTER TABLE documents
                     ADD COLUMN file_hash TEXT NOT NULL DEFAULT ''
+                    """
+                )
+
+            if "page_count" not in column_names:
+                connection.execute(
+                    """
+                    ALTER TABLE documents
+                    ADD COLUMN page_count INTEGER NOT NULL DEFAULT 0
                     """
                 )
 
@@ -108,20 +117,28 @@ class LocalDatabase:
         title: str = "",
         file_hash: str = "",
     ) -> int:
+        page_count = (
+            len(document.pages)
+            if document is not None
+            else 0
+        )
+
         with self.connect() as connection:
             cursor = connection.execute(
                 """
                 INSERT INTO documents (
                     file_path,
                     title,
-                    file_hash
+                    file_hash,
+                    page_count
                 )
-                VALUES (?, ?, ?)
+                VALUES (?, ?, ?, ?)
                 """,
                 (
                     file_path,
                     title,
                     file_hash,
+                    page_count,
                 ),
             )
 
@@ -197,20 +214,22 @@ class LocalDatabase:
             rows = connection.execute(
                 """
                 SELECT
-                    d.id,
-                    d.file_path,
-                    d.title,
-                    d.file_hash,
-                    COUNT(c.id) AS chunk_count
-                FROM documents AS d
-                LEFT JOIN chunks AS c
-                    ON c.document_id = d.id
+                    documents.id,
+                    documents.file_path,
+                    documents.title,
+                    documents.file_hash,
+                    documents.page_count,
+                    COUNT(chunks.id) AS chunk_count
+                FROM documents
+                LEFT JOIN chunks
+                    ON chunks.document_id = documents.id
                 GROUP BY
-                    d.id,
-                    d.file_path,
-                    d.title,
-                    d.file_hash
-                ORDER BY d.id
+                    documents.id,
+                    documents.file_path,
+                    documents.title,
+                    documents.file_hash,
+                    documents.page_count
+                ORDER BY documents.id
                 """
             ).fetchall()
 
@@ -220,7 +239,8 @@ class LocalDatabase:
                 "file_path": row[1],
                 "title": row[2],
                 "file_hash": row[3],
-                "chunk_count": row[4],
+                "page_count": row[4],
+                "chunk_count": row[5],
             }
             for row in rows
         ]
@@ -273,7 +293,8 @@ class LocalDatabase:
                     id,
                     file_path,
                     title,
-                    file_hash
+                    file_hash,
+                    page_count
                 FROM documents
                 WHERE id = ?
                 """,
@@ -288,6 +309,7 @@ class LocalDatabase:
             "file_path": row[1],
             "title": row[2],
             "file_hash": row[3],
+            "page_count": row[4],
         }
 
     def delete_document(
