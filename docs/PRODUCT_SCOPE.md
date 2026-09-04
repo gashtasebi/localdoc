@@ -1,0 +1,870 @@
+# LocalDoc — Product Scope
+
+## 1. Purpose
+
+This document defines the product scope of LocalDoc.
+
+It describes:
+
+* what LocalDoc is,
+* who it is intended for,
+* the core functionality,
+* the offline architecture,
+* supported document workflows,
+* major product boundaries,
+* non-goals,
+* commercial-release expectations.
+
+This document is an engineering and product-planning document.
+
+It is not legal advice, a privacy policy, terms of service, or a final product marketing claim.
+
+---
+
+## 2. Product Definition
+
+LocalDoc is a local, privacy-oriented document AI assistant designed to allow users to process and query documents on their own computer.
+
+The core product workflow is:
+
+```text
+PDF
+ ↓
+Text Extraction
+ ↓
+Text Cleaning
+ ↓
+Chunking
+ ↓
+Local Embeddings
+ ↓
+Local Storage
+ ↓
+Semantic Retrieval
+ ↓
+Local LLM
+ ↓
+Answer + Source Pages
+```
+
+The primary design goal is:
+
+> Process user documents locally and provide document-grounded answers without requiring a cloud AI service for normal operation.
+
+---
+
+## 3. Target Product
+
+The intended commercial product is a standalone desktop/on-premise application.
+
+The final product should be installable on a customer's computer and usable during normal operation without an Internet connection.
+
+The product should not require:
+
+* cloud document storage,
+* cloud vector databases,
+* cloud LLM APIs,
+* cloud embedding APIs,
+* telemetry services,
+* analytics services,
+* automatic Internet-based model downloads.
+
+Internet access may be required during development, installation preparation, updates, or license-management workflows depending on the final implementation.
+
+The exact offline guarantees must be verified before commercial release.
+
+---
+
+## 4. Target Users
+
+The initial target users are individuals and organizations that need local document analysis while keeping documents on their own systems.
+
+Potential use cases include:
+
+* private document analysis,
+* internal company documents,
+* technical documentation,
+* research documents,
+* manuals,
+* reports,
+* contracts,
+* knowledge bases,
+* academic documents.
+
+LocalDoc is not initially targeted as a general-purpose chatbot.
+
+The product focus is document-grounded question answering.
+
+---
+
+## 5. Core Product Features
+
+### 5.1 Document Import
+
+The system should allow users to import supported PDF documents.
+
+For each imported document, LocalDoc should:
+
+1. validate the file,
+2. calculate a file hash,
+3. extract text,
+4. clean extracted text,
+5. split text into chunks,
+6. generate embeddings,
+7. store the processed representation locally.
+
+---
+
+### 5.2 Document Identification
+
+Each imported document should have an internal identity.
+
+The current implementation uses:
+
+* database ID,
+* file path,
+* title,
+* SHA-256 file hash.
+
+The hash is used to detect whether a document has already been processed.
+
+This prevents unnecessary repeated processing of identical files.
+
+---
+
+### 5.3 Text Extraction
+
+The current implementation uses PyMuPDF for PDF text extraction.
+
+The extraction layer should remain separated from:
+
+* chunking,
+* embeddings,
+* retrieval,
+* question answering,
+* database storage.
+
+This separation allows the extraction implementation to be replaced if licensing or technical requirements change.
+
+---
+
+### 5.4 Text Chunking
+
+Extracted text is divided into smaller chunks suitable for semantic retrieval.
+
+The current implementation supports sentence-based chunking with configurable:
+
+* chunk size,
+* overlap.
+
+Chunk IDs are assigned globally within a processed document.
+
+Chunk metadata currently includes:
+
+* chunk ID,
+* page number,
+* text.
+
+---
+
+### 5.5 Local Embeddings
+
+LocalDoc uses a local embedding model to convert document chunks into numerical vectors.
+
+The current implementation uses:
+
+`all-MiniLM-L6-v2`
+
+The embedding implementation is isolated behind an embedder interface/class so that the embedding model can be replaced later if required.
+
+The final commercial model choice must be reviewed separately for:
+
+* license compatibility,
+* redistribution rights,
+* commercial use,
+* model distribution requirements,
+* security,
+* reproducibility.
+
+---
+
+### 5.6 Semantic Retrieval
+
+LocalDoc uses vector similarity to find document chunks relevant to a user question.
+
+The current retrieval implementation uses cosine similarity.
+
+Retrieval supports:
+
+* `top_k`,
+* minimum similarity threshold.
+
+The system should avoid sending irrelevant document content to the LLM when retrieval does not identify sufficiently relevant chunks.
+
+---
+
+### 5.7 Document-Grounded Question Answering
+
+The answer-generation layer should use retrieved document content as context.
+
+The current prompt requires the LLM to:
+
+* use only the provided context,
+* avoid outside knowledge,
+* explicitly state when the answer is not available in the document.
+
+The answer should include source page information based on the retrieved chunks.
+
+Source-page information must be generated by the application from document metadata rather than trusted to the LLM.
+
+---
+
+### 5.8 Local LLM
+
+The current implementation communicates with a locally running Ollama instance.
+
+LocalDoc currently uses the local LLM through an HTTP interface using Python's standard library.
+
+The final product should keep the LLM provider/runtime replaceable where practical.
+
+The final commercial distribution must separately determine:
+
+* which model is distributed,
+* whether the model is bundled,
+* whether the model must be separately installed,
+* model license requirements,
+* model redistribution rights,
+* model update mechanism,
+* hardware requirements.
+
+---
+
+### 5.9 Local Database
+
+LocalDoc uses SQLite for local persistence.
+
+The database stores document and processed-document information.
+
+The database must remain local to the installation unless a future product version explicitly introduces another architecture.
+
+The current architecture does not require a remote database.
+
+---
+
+### 5.10 Document Management
+
+The application currently supports document-management operations including:
+
+* listing documents,
+* importing documents,
+* viewing document information,
+* deleting documents.
+
+The final desktop UI should expose these capabilities in a user-friendly way.
+
+---
+
+## 6. Current CLI
+
+The CLI is currently the primary application interface.
+
+Current functionality includes:
+
+```text
+local document processing
+document listing
+document inspection
+document import
+document deletion
+question answering
+```
+
+The CLI should remain functional during development.
+
+The CLI is considered an engine/developer interface and should not be treated as throwaway code.
+
+Future desktop UI functionality should call the same underlying application services rather than duplicate the business logic.
+
+---
+
+## 7. Future Desktop UI
+
+A desktop graphical user interface is planned for the commercial product.
+
+The UI should provide at least:
+
+* document import,
+* document list,
+* document selection,
+* question input,
+* answer display,
+* source-page display,
+* processing status,
+* error messages,
+* document deletion,
+* application settings where required.
+
+The UI should sit above the existing application architecture.
+
+Preferred architecture:
+
+```text
+Desktop UI
+    ↓
+Application Services
+    ↓
+Document / Retrieval / QA Pipeline
+    ↓
+Storage + Local Models
+```
+
+Business logic should not be implemented directly inside UI components.
+
+---
+
+## 8. Offline Architecture
+
+The final product is intended to operate locally.
+
+Expected normal-operation architecture:
+
+```text
+┌─────────────────────────────┐
+│        LocalDoc Desktop     │
+│                             │
+│  UI                         │
+│   ↓                         │
+│  Application Services       │
+│   ↓                         │
+│  Document Pipeline          │
+│   ↓                         │
+│  SQLite + Embeddings        │
+│   ↓                         │
+│  Local LLM                  │
+│                             │
+│  Customer Files Stay Local  │
+└─────────────────────────────┘
+```
+
+The architecture should not require customer documents to leave the customer's computer.
+
+No telemetry or analytics infrastructure is planned for the initial commercial product.
+
+Any future network functionality must be explicitly designed, documented, and reviewed.
+
+---
+
+## 9. Privacy-by-Design Product Boundary
+
+LocalDoc should follow these product principles:
+
+* document contents remain local during normal operation,
+* no cloud document upload,
+* no cloud AI API for normal question answering,
+* no unnecessary telemetry,
+* no unnecessary analytics,
+* no automatic transmission of document contents,
+* logs must not intentionally contain document contents,
+* temporary files containing document information must be minimized,
+* sensitive data should not be unnecessarily duplicated.
+
+These are engineering requirements and must be verified against the final implementation.
+
+---
+
+## 10. Security Product Boundary
+
+Security is part of the product architecture rather than a later feature.
+
+The product should address:
+
+* local file handling,
+* path validation,
+* malicious or malformed PDF handling,
+* prompt injection,
+* model supply-chain risks,
+* dependency vulnerabilities,
+* database integrity,
+* temporary files,
+* logging,
+* secrets,
+* software updates,
+* package integrity,
+* license integrity.
+
+Security requirements are maintained separately in:
+
+`docs/SECURITY_REQUIREMENTS.md`
+
+---
+
+## 11. Licensing Product Boundary
+
+All dependencies and AI models included in the commercial distribution must be reviewed before release.
+
+The project currently has a known licensing issue requiring resolution:
+
+`PyMuPDF`
+
+The current development dependency is dual licensed under:
+
+* GNU AGPL-3.0
+* Artifex Commercial License
+
+The commercial distribution strategy must resolve this before release.
+
+Third-party license tracking is maintained in:
+
+`docs/THIRD_PARTY_LICENSES.md`
+
+No dependency should be considered commercially distributable merely because it can be installed with `pip`.
+
+---
+
+## 12. AI Compliance Boundary
+
+LocalDoc is designed as a document-processing and question-answering application.
+
+The product should be developed with applicable EU requirements in mind, including requirements that may apply to AI systems, software products, privacy, security, transparency, and consumer/business obligations depending on the final product and use case.
+
+The exact legal classification and obligations must be reviewed before commercial release.
+
+This document does not make a legal classification of LocalDoc.
+
+AI-related engineering requirements are tracked separately in:
+
+`docs/AI_COMPLIANCE.md`
+
+---
+
+## 13. Commercial Licensing
+
+The final product is intended to support commercial sale.
+
+The planned commercial architecture may include:
+
+* offline license verification,
+* device binding,
+* digitally signed licenses,
+* tamper-resistance measures,
+* controlled product activation,
+* offline update packages.
+
+These mechanisms are not required to be fully implemented at the current prototype stage.
+
+However, the architecture should avoid making them impossible to introduce later.
+
+---
+
+## 14. Updates
+
+The final product should support a controlled update mechanism.
+
+The preferred long-term approach is an offline-capable update package.
+
+Updates should be:
+
+* versioned,
+* integrity-checked,
+* authenticated,
+* reproducible where practical,
+* documented.
+
+The application should not silently download arbitrary executable or model content.
+
+---
+
+## 15. Logging and Diagnostics
+
+LocalDoc should provide sufficient diagnostics to troubleshoot application problems.
+
+Logs should avoid storing:
+
+* full document contents,
+* complete prompts,
+* complete LLM responses,
+* unnecessary personal data,
+* secrets,
+* license credentials.
+
+Where document-related identifiers are required for diagnostics, stable non-content identifiers such as document IDs or hashes should be preferred where appropriate.
+
+---
+
+## 16. Error Handling
+
+Errors should be handled at clear architectural boundaries.
+
+The application should distinguish between:
+
+* invalid input,
+* unsupported files,
+* PDF extraction failures,
+* embedding failures,
+* database failures,
+* model/runtime failures,
+* retrieval failures,
+* configuration failures,
+* license failures.
+
+User-facing errors should be understandable without exposing sensitive internal information.
+
+Developer diagnostics may contain additional technical information where appropriate.
+
+---
+
+## 17. Performance Scope
+
+The initial product should prioritize correctness and reliability over extreme optimization.
+
+The first commercial-quality version should support reasonable document sizes and local workloads.
+
+Performance optimization should focus on measurable bottlenecks such as:
+
+* repeated PDF processing,
+* repeated embedding generation,
+* retrieval performance,
+* database access,
+* LLM response latency,
+* application startup time,
+* memory consumption.
+
+Premature optimization should be avoided.
+
+---
+
+## 18. Scalability Scope
+
+The initial product is primarily a local desktop application.
+
+The first version is not intended to become a distributed cloud platform.
+
+The architecture should nevertheless keep major components separated enough to permit future expansion if required.
+
+Potential future directions may include:
+
+* larger document collections,
+* multiple users,
+* team deployments,
+* enterprise administration,
+* additional document formats,
+* alternative embedding models,
+* alternative local LLM runtimes.
+
+These are future possibilities, not current product requirements.
+
+---
+
+## 19. Supported Formats
+
+Initial supported format:
+
+* PDF
+
+Future formats may include:
+
+* DOCX,
+* TXT,
+* Markdown,
+* HTML,
+* additional office/document formats.
+
+Additional formats should only be added when they provide clear product value.
+
+Each new format must receive separate consideration for:
+
+* parser reliability,
+* security,
+* licensing,
+* privacy,
+* metadata handling,
+* commercial redistribution.
+
+---
+
+## 20. Out of Scope for Initial Version
+
+The following are intentionally outside the initial product scope:
+
+* cloud document storage,
+* cloud vector databases,
+* mandatory cloud LLM APIs,
+* mandatory cloud embeddings,
+* social features,
+* user analytics,
+* advertising,
+* document sharing platform,
+* collaborative editing,
+* general web search,
+* autonomous web browsing,
+* general-purpose AI assistant functionality,
+* automatic document publication,
+* automatic model downloads during normal operation.
+
+These features may be reconsidered in future product versions.
+
+---
+
+## 21. Architectural Principles
+
+The project follows these principles:
+
+### Separation of concerns
+
+Document processing, chunking, embeddings, retrieval, QA, storage, and UI should remain separate components.
+
+### Replaceable dependencies
+
+External technologies such as:
+
+* PDF parser,
+* embedding model,
+* LLM runtime,
+
+should be isolated where practical.
+
+### Local-first
+
+Local processing is the default architecture.
+
+### Privacy-first
+
+The system should minimize unnecessary movement and duplication of user data.
+
+### Security-by-design
+
+Security requirements are considered during implementation rather than added after development.
+
+### Testability
+
+Core functionality should be testable independently from external services where practical.
+
+### Reproducibility
+
+Builds, dependencies, and release artifacts should be controlled and documented.
+
+### Minimal complexity
+
+The product should solve the core problem without unnecessary architectural complexity.
+
+---
+
+## 22. Development Strategy
+
+Development should proceed incrementally.
+
+Preferred development cycle:
+
+```text
+Feature
+ ↓
+Test
+ ↓
+Implementation
+ ↓
+pytest
+ ↓
+Git commit
+ ↓
+Git push
+```
+
+Each meaningful feature should have a clear checkpoint.
+
+Existing working functionality should not be unnecessarily rewritten.
+
+---
+
+## 23. Current Technical Architecture
+
+Current major components include:
+
+```text
+main.py
+    ↓
+pipeline.py
+    ↓
+document_processor.py
+    ↓
+chunker.py
+    ↓
+embedder.py
+    ↓
+retriever.py
+    ↓
+qa.py
+    ↓
+llm.py / ollama_llm.py
+```
+
+Persistence:
+
+```text
+pipeline.py
+    ↓
+storage/database.py
+    ↓
+SQLite
+```
+
+Supporting components include:
+
+```text
+models.py
+file_utils.py
+text_cleaner.py
+pdf_parser.py
+```
+
+Development and compliance tooling includes:
+
+```text
+tools/direct_imports.py
+tools/license_inventory.py
+tools/runtime_dependencies.py
+```
+
+---
+
+## 24. Current Product Status
+
+Current implemented capabilities include:
+
+* PDF text extraction,
+* text cleaning,
+* sentence-based chunking,
+* overlapping chunks,
+* local embeddings,
+* semantic retrieval,
+* similarity thresholding,
+* local LLM integration,
+* document-grounded QA,
+* source-page reporting,
+* SQLite persistence,
+* document hashing,
+* duplicate document detection,
+* document listing,
+* document import,
+* document deletion,
+* CLI operation,
+* automated tests.
+
+Current automated test status:
+
+`63 passed`
+
+The exact test count is expected to change as the project evolves.
+
+---
+
+## 25. Known Commercial Blockers
+
+The following must be resolved before a commercial release:
+
+1. PyMuPDF licensing strategy.
+2. Final embedding-model licensing and redistribution review.
+3. Final LLM/model licensing and redistribution review.
+4. Complete third-party dependency inventory.
+5. Secure commercial packaging.
+6. License mechanism.
+7. Update mechanism.
+8. Privacy documentation.
+9. Applicable AI compliance review.
+10. Security review.
+11. Product terms and commercial documentation.
+12. Final platform-specific release testing.
+
+---
+
+## 26. Product Release Gate
+
+LocalDoc should not be considered commercially release-ready until the following categories have been reviewed:
+
+### Functionality
+
+* Core document workflow works reliably.
+* QA produces document-grounded answers.
+* Source pages are correct.
+* Errors are handled appropriately.
+
+### Security
+
+* Security requirements have been reviewed.
+* Dependencies have been reviewed.
+* Packaging integrity has been tested.
+* Sensitive information is not unnecessarily logged.
+
+### Privacy
+
+* Data-flow behavior is documented.
+* Local-processing claims have been technically verified.
+* Privacy documentation is prepared.
+
+### Licensing
+
+* Runtime dependencies reviewed.
+* Transitive dependencies reviewed.
+* AI models reviewed.
+* Redistribution rights verified.
+* Required notices included.
+
+### Compliance
+
+* Applicable legal requirements reviewed.
+* AI-related obligations reviewed.
+* Product documentation prepared.
+
+### Distribution
+
+* macOS packaging tested.
+* Windows packaging planned/tested before Windows release.
+* Installation process documented.
+* Update process tested.
+* License system tested.
+
+---
+
+## 27. Non-Goals of This Document
+
+This document does not:
+
+* provide legal advice,
+* establish final legal classifications,
+* replace a privacy policy,
+* replace terms and conditions,
+* grant licenses,
+* guarantee compliance,
+* guarantee commercial redistribution rights,
+* guarantee security,
+* guarantee offline operation until technically verified.
+
+---
+
+## 28. Review History
+
+### Initial Version
+
+Created during the LocalDoc commercial-readiness planning phase.
+
+Purpose:
+
+* establish product boundaries,
+* prevent uncontrolled scope expansion,
+* align architecture with the intended commercial product,
+* document offline-first requirements.
+
+---
+
+## 29. Next Review
+
+Review this document when one of the following occurs:
+
+* the product architecture changes,
+* a new major feature is added,
+* cloud/network functionality is introduced,
+* a new document format is added,
+* the licensing strategy changes,
+* the commercial distribution model changes,
+* the desktop UI architecture is introduced,
+* the product enters release preparation.
+
