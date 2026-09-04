@@ -3,6 +3,7 @@ from src.retriever import (
     cosine_similarity,
     retrieve,
     retrieve_by_text,
+    retrieve_with_scores,
 )
 
 
@@ -280,3 +281,156 @@ def test_retrieve_with_threshold_keeps_results_sorted():
         "Medium",
         "Low",
     ]
+
+
+
+
+def test_retrieve_with_scores_returns_scores_and_chunks():
+    chunks = [
+        EmbeddedChunk(
+            chunk=Chunk(
+                chunk_id=1,
+                page_number=1,
+                text="Python programming",
+            ),
+            vector=[1.0, 0.0],
+        ),
+        EmbeddedChunk(
+            chunk=Chunk(
+                chunk_id=2,
+                page_number=1,
+                text="Machine learning",
+            ),
+            vector=[0.0, 1.0],
+        ),
+    ]
+
+    result = retrieve_with_scores(
+        query_vector=[1.0, 0.0],
+        embedded_chunks=chunks,
+        top_k=2,
+    )
+
+    assert len(result) == 2
+
+    score, item = result[0]
+
+    assert isinstance(score, float)
+    assert item is chunks[0]
+
+
+def test_retrieve_with_scores_is_sorted_descending():
+    chunks = [
+        EmbeddedChunk(
+            chunk=Chunk(
+                chunk_id=1,
+                page_number=1,
+                text="Low",
+            ),
+            vector=[0.0, 1.0],
+        ),
+        EmbeddedChunk(
+            chunk=Chunk(
+                chunk_id=2,
+                page_number=1,
+                text="High",
+            ),
+            vector=[1.0, 0.0],
+        ),
+        EmbeddedChunk(
+            chunk=Chunk(
+                chunk_id=3,
+                page_number=1,
+                text="Medium",
+            ),
+            vector=[0.7, 0.7],
+        ),
+    ]
+
+    result = retrieve_with_scores(
+        query_vector=[1.0, 0.0],
+        embedded_chunks=chunks,
+        top_k=3,
+    )
+
+    scores = [
+        score
+        for score, _ in result
+    ]
+
+    assert scores == sorted(
+        scores,
+        reverse=True,
+    )
+
+
+def test_retrieve_with_scores_respects_top_k():
+    chunks = [
+        EmbeddedChunk(
+            chunk=Chunk(
+                chunk_id=1,
+                page_number=1,
+                text="First",
+            ),
+            vector=[1.0, 0.0],
+        ),
+        EmbeddedChunk(
+            chunk=Chunk(
+                chunk_id=2,
+                page_number=1,
+                text="Second",
+            ),
+            vector=[0.9, 0.1],
+        ),
+        EmbeddedChunk(
+            chunk=Chunk(
+                chunk_id=3,
+                page_number=1,
+                text="Third",
+            ),
+            vector=[0.8, 0.2],
+        ),
+    ]
+
+    result = retrieve_with_scores(
+        query_vector=[1.0, 0.0],
+        embedded_chunks=chunks,
+        top_k=2,
+    )
+
+    assert len(result) == 2
+
+
+def test_retrieve_with_scores_respects_min_similarity():
+    chunks = [
+        EmbeddedChunk(
+            chunk=Chunk(
+                chunk_id=1,
+                page_number=1,
+                text="Relevant",
+            ),
+            vector=[1.0, 0.0],
+        ),
+        EmbeddedChunk(
+            chunk=Chunk(
+                chunk_id=2,
+                page_number=1,
+                text="Irrelevant",
+            ),
+            vector=[0.0, 1.0],
+        ),
+    ]
+
+    result = retrieve_with_scores(
+        query_vector=[1.0, 0.0],
+        embedded_chunks=chunks,
+        top_k=5,
+        min_similarity=0.5,
+    )
+
+    assert len(result) == 1
+
+    score, item = result[0]
+
+    assert item is chunks[0]
+    assert score >= 0.5

@@ -1,4 +1,3 @@
-
 from src.models import EmbeddedChunk
 from src.llm import generate_answer
 from src.retriever import retrieve_by_text
@@ -13,7 +12,8 @@ def build_context(
     embedded_chunks: list[EmbeddedChunk],
 ) -> str:
     return "\n\n".join(
-        f"[Page {item.chunk.page_number}]\n{item.chunk.text}"
+        f"[Page {item.chunk.page_number}]\n"
+        f"{item.chunk.text}"
         for item in embedded_chunks
     )
 
@@ -22,24 +22,37 @@ def build_prompt(
     question: str,
     context: str,
 ) -> str:
-    return f"""Answer the question using only the provided context.
+    return f"""You are a document question-answering assistant.
 
-Rules:
-- Use only information from the context.
-- Use only information explicitly contained in the context.
-- Do not use outside knowledge.
-- Do not guess or infer information that is not supported by the context.
-- If the answer is not contained in the context, return exactly:
-  "{NO_ANSWER_MESSAGE}"
-- Do not mention information that is not present in the context.
+Your task is to answer the user's question using ONLY the information
+contained in the provided document context.
 
-Context:
+IMPORTANT RULES:
+1. The context is the only source of truth.
+2. Use only information from the context.
+3. Use only information explicitly contained in the context.
+4. If the context directly contains the answer, answer the question.
+5. Do not use outside knowledge.
+6. Do not guess or infer information.
+7. Do not invent facts.
+8. Do not invent page numbers.
+9. Do not say that information is missing if the answer is explicitly
+   stated in the context.
+10. Answer in the same language as the user's question.
+11. Keep the answer concise and directly answer the question.
+12. If the answer cannot be found in the context, return exactly:
+The answer is not available in the provided document.
+
+
+DOCUMENT CONTEXT:
+-----------------
 {context}
+-----------------
 
-Question:
+USER QUESTION:
 {question}
 
-Answer:"""
+ANSWER:"""
 
 
 def is_no_answer(answer: str) -> bool:

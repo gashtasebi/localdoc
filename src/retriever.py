@@ -15,6 +15,7 @@ def cosine_similarity(
     norm_a = math.sqrt(
         sum(x * x for x in a)
     )
+
     norm_b = math.sqrt(
         sum(y * y for y in b)
     )
@@ -25,12 +26,12 @@ def cosine_similarity(
     return dot_product / (norm_a * norm_b)
 
 
-def retrieve(
+def retrieve_with_scores(
     query_vector: list[float],
     embedded_chunks: list[EmbeddedChunk],
     top_k: int = 3,
     min_similarity: float | None = None,
-) -> list[EmbeddedChunk]:
+) -> list[tuple[float, EmbeddedChunk]]:
     scored_chunks = [
         (
             cosine_similarity(
@@ -54,9 +55,25 @@ def retrieve(
         reverse=True,
     )
 
+    return scored_chunks[:top_k]
+
+
+def retrieve(
+    query_vector: list[float],
+    embedded_chunks: list[EmbeddedChunk],
+    top_k: int = 3,
+    min_similarity: float | None = None,
+) -> list[EmbeddedChunk]:
+    scored_chunks = retrieve_with_scores(
+        query_vector=query_vector,
+        embedded_chunks=embedded_chunks,
+        top_k=top_k,
+        min_similarity=min_similarity,
+    )
+
     return [
         item
-        for _, item in scored_chunks[:top_k]
+        for _, item in scored_chunks
     ]
 
 
@@ -70,6 +87,23 @@ def retrieve_by_text(
     query_vector = embedder.embed(query)
 
     return retrieve(
+        query_vector=query_vector,
+        embedded_chunks=embedded_chunks,
+        top_k=top_k,
+        min_similarity=min_similarity,
+    )
+
+
+def retrieve_by_text_with_scores(
+    query: str,
+    embedded_chunks: list[EmbeddedChunk],
+    embedder,
+    top_k: int = 5,
+    min_similarity: float | None = None,
+) -> list[tuple[float, EmbeddedChunk]]:
+    query_vector = embedder.embed(query)
+
+    return retrieve_with_scores(
         query_vector=query_vector,
         embedded_chunks=embedded_chunks,
         top_k=top_k,
