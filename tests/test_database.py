@@ -5,6 +5,14 @@ from src.models import Chunk, Document, EmbeddedChunk, Page
 from src.storage.database import LocalDatabase
 
 
+
+
+
+
+
+
+
+
 def create_document():
     return Document(
         pages=[
@@ -67,6 +75,9 @@ def test_initialize_creates_database_tables(tmp_path):
     assert "chunks" in tables
 
 
+
+
+
 def test_save_document_stores_chunks_and_vectors(tmp_path):
     db_path = tmp_path / "test.db"
 
@@ -113,6 +124,10 @@ def test_save_document_stores_chunks_and_vectors(tmp_path):
     assert json.loads(rows[1][4]) == [0.4, 0.5, 0.6]
 
 
+
+
+
+
 def test_load_embedded_chunks(tmp_path):
     db_path = tmp_path / "test.db"
 
@@ -145,6 +160,12 @@ def test_load_embedded_chunks(tmp_path):
     assert loaded_chunks[1].vector == [0.4, 0.5, 0.6]
 
 
+
+
+
+
+
+
 def test_find_document_by_path(tmp_path):
     db_path = tmp_path / "test.db"
 
@@ -164,6 +185,10 @@ def test_find_document_by_path(tmp_path):
     assert result == document_id
 
 
+
+
+
+
 def test_find_document_by_path_returns_none_for_unknown_file(
     tmp_path,
 ):
@@ -177,6 +202,9 @@ def test_find_document_by_path_returns_none_for_unknown_file(
     )
 
     assert result is None
+
+
+
 
 
 def test_find_document_by_hash(tmp_path):
@@ -199,6 +227,10 @@ def test_find_document_by_hash(tmp_path):
     assert result == document_id
 
 
+
+
+
+
 def test_find_document_by_hash_returns_none_for_unknown_hash(
     tmp_path,
 ):
@@ -212,6 +244,10 @@ def test_find_document_by_hash_returns_none_for_unknown_hash(
     )
 
     assert result is None
+
+
+
+
 
 
 def test_list_documents(tmp_path):
@@ -236,6 +272,11 @@ def test_list_documents(tmp_path):
     assert documents[0]["chunk_count"] == 2
 
 
+
+
+
+
+
 def test_list_documents_includes_chunk_count(tmp_path):
     db_path = tmp_path / "test.db"
 
@@ -251,6 +292,11 @@ def test_list_documents_includes_chunk_count(tmp_path):
     documents = database.list_documents()
 
     assert documents[0]["chunk_count"] == 2
+
+
+
+
+
 
 
 def test_list_documents_includes_page_count(tmp_path):
@@ -270,6 +316,11 @@ def test_list_documents_includes_page_count(tmp_path):
     assert documents[0]["page_count"] == 3
 
 
+
+
+
+
+
 def test_list_documents_returns_empty_list_for_empty_database(
     tmp_path,
 ):
@@ -281,6 +332,11 @@ def test_list_documents_returns_empty_list_for_empty_database(
     documents = database.list_documents()
 
     assert documents == []
+
+
+
+
+
 
 
 def test_save_document_with_title(tmp_path):
@@ -299,6 +355,11 @@ def test_save_document_with_title(tmp_path):
     documents = database.list_documents()
 
     assert documents[0]["title"] == "My Test Document"
+
+
+
+
+
 
 
 def test_get_document_returns_metadata(tmp_path):
@@ -327,6 +388,10 @@ def test_get_document_returns_metadata(tmp_path):
     assert document["page_count"] == 3
 
 
+
+
+
+
 def test_get_document_returns_none_for_unknown_id(
     tmp_path,
 ):
@@ -338,6 +403,10 @@ def test_get_document_returns_none_for_unknown_id(
     document = database.get_document(999)
 
     assert document is None
+
+
+
+
 
 
 def test_delete_document(tmp_path):
@@ -361,6 +430,10 @@ def test_delete_document(tmp_path):
     assert database.load_embedded_chunks(document_id) == []
 
 
+
+
+
+
 def test_delete_nonexistent_document(tmp_path):
     db_path = tmp_path / "test.db"
 
@@ -370,6 +443,11 @@ def test_delete_nonexistent_document(tmp_path):
     deleted = database.delete_document(999)
 
     assert deleted is False
+
+
+
+
+
 
 
 def test_legacy_page_count_is_backfilled(tmp_path):
@@ -450,6 +528,9 @@ def test_legacy_page_count_is_backfilled(tmp_path):
 
 
 
+
+
+
 def test_list_documents_returns_newest_document_first(tmp_path):
     db_path = tmp_path / "test.db"
     database = LocalDatabase(db_path)
@@ -478,6 +559,10 @@ def test_list_documents_returns_newest_document_first(tmp_path):
 
 
 
+
+
+
+
 def test_get_document_returns_complete_document_metadata(tmp_path):
     db_path = tmp_path / "test.db"
     database = LocalDatabase(db_path)
@@ -500,3 +585,94 @@ def test_get_document_returns_complete_document_metadata(tmp_path):
     assert document["page_count"] == 3
     assert document["chunk_count"] == 2
 
+
+
+
+
+def test_load_embedded_chunks_is_isolated_per_document(tmp_path):
+    db_path = tmp_path / "test.db"
+
+    database = LocalDatabase(db_path)
+    database.initialize()
+
+    first_document = Document(
+        pages=[
+            Page(
+                page_number=1,
+                text="First document.",
+            )
+        ]
+    )
+
+    first_chunks = [
+        EmbeddedChunk(
+            chunk=Chunk(
+                chunk_id=1,
+                page_number=1,
+                text="First document chunk.",
+            ),
+            vector=[1.0, 0.0, 0.0],
+        )
+    ]
+
+    second_document = Document(
+        pages=[
+            Page(
+                page_number=1,
+                text="Second document.",
+            )
+        ]
+    )
+
+    second_chunks = [
+        EmbeddedChunk(
+            chunk=Chunk(
+                chunk_id=1,
+                page_number=1,
+                text="Second document chunk.",
+            ),
+            vector=[0.0, 1.0, 0.0],
+        )
+    ]
+
+    first_document_id = database.save_document(
+        document=first_document,
+        embedded_chunks=first_chunks,
+        file_path="first.pdf",
+        title="First Document",
+        file_hash="hash-first",
+    )
+
+    second_document_id = database.save_document(
+        document=second_document,
+        embedded_chunks=second_chunks,
+        file_path="second.pdf",
+        title="Second Document",
+        file_hash="hash-second",
+    )
+
+    first_loaded = database.load_embedded_chunks(
+        first_document_id
+    )
+
+    second_loaded = database.load_embedded_chunks(
+        second_document_id
+    )
+
+    assert len(first_loaded) == 1
+    assert len(second_loaded) == 1
+
+    assert (
+        first_loaded[0].chunk.text
+        == "First document chunk."
+    )
+
+    assert (
+        second_loaded[0].chunk.text
+        == "Second document chunk."
+    )
+
+    assert (
+        first_loaded[0].chunk.text
+        != second_loaded[0].chunk.text
+    )
