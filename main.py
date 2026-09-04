@@ -4,7 +4,6 @@ from pathlib import Path
 
 from src.embedder import SentenceTransformerEmbedder
 from src.ollama_llm import OllamaLLM
-from src.pipeline import process_pdf_pipeline
 from src.qa import answer_question
 from src.services.document_service import DocumentService
 from src.storage.database import LocalDatabase
@@ -198,12 +197,10 @@ def main():
     embedder = SentenceTransformerEmbedder()
     llm = OllamaLLM()
 
-    embedded_chunks = process_pdf_pipeline(
-        str(pdf_path),
-        embedder,
-        chunk_size=5,
-        overlap=1,
-        database=database,
+    document_service.embedder = embedder
+
+    embedded_chunks = document_service.process_pdf(
+        pdf_path
     )
 
     print("Document loaded.")

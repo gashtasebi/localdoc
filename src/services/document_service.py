@@ -1,4 +1,3 @@
-
 from pathlib import Path
 
 from src.embedder import SentenceTransformerEmbedder
@@ -25,7 +24,10 @@ class DocumentService:
     def delete_document(self, document_id: int) -> bool:
         return self.database.delete_document(document_id)
 
-    def load_embedded_chunks(self, document_id: int):
+    def load_document(
+        self,
+        document_id: int,
+    ):
         document = self.database.get_document(document_id)
 
         if document is None:
@@ -33,7 +35,14 @@ class DocumentService:
                 f"Document with ID {document_id} not found."
             )
 
-        return self.database.load_embedded_chunks(document_id)
+        return document
+
+    def load_embedded_chunks(self, document_id: int):
+        self.load_document(document_id)
+
+        return self.database.load_embedded_chunks(
+            document_id
+        )
 
     def import_pdf(self, pdf_path: str | Path) -> int:
         path = Path(pdf_path)
@@ -69,15 +78,17 @@ class DocumentService:
 
         return document_id
 
-    def load_document(
+    def process_pdf(
         self,
-        document_id: int,
+        pdf_path: str | Path,
     ):
-        document = self.database.get_document(document_id)
+        if self.embedder is None:
+            self.embedder = SentenceTransformerEmbedder()
 
-        if document is None:
-            raise ValueError(
-                f"Document with ID {document_id} not found."
-            )
-
-        return document
+        return process_pdf_pipeline(
+            str(pdf_path),
+            self.embedder,
+            chunk_size=5,
+            overlap=1,
+            database=self.database,
+        )

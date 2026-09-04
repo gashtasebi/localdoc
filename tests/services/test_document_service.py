@@ -3,6 +3,52 @@ from unittest.mock import Mock
 from src.services.document_service import DocumentService
 
 
+
+
+def test_process_pdf_delegates_to_pipeline(monkeypatch):
+    database = Mock()
+    embedder = Mock()
+
+    expected_chunks = [
+        "chunk-1",
+        "chunk-2",
+    ]
+
+    def fake_pipeline(
+        pdf_path,
+        embedder,
+        chunk_size,
+        overlap,
+        database,
+    ):
+        assert pdf_path == "document.pdf"
+        assert chunk_size == 5
+        assert overlap == 1
+        assert database is database_mock
+        return expected_chunks
+
+    database_mock = database
+
+    monkeypatch.setattr(
+        "src.services.document_service.process_pdf_pipeline",
+        fake_pipeline,
+    )
+
+    service = DocumentService(
+        database=database,
+        embedder=embedder,
+    )
+
+    result = service.process_pdf(
+        "document.pdf"
+    )
+
+    assert result == expected_chunks
+
+
+
+
+
 def test_list_documents_delegates_to_database():
     database = Mock()
     database.list_documents.return_value = [

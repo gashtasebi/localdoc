@@ -69,6 +69,8 @@ def test_validate_pdf_path_accepts_pdf(tmp_path):
     assert result == pdf_path
 
 
+
+
 def test_main_selects_document_by_id(monkeypatch, capsys):
     class FakeDatabase:
         def __init__(self):
@@ -110,8 +112,8 @@ def test_main_selects_document_by_id(monkeypatch, capsys):
     )
 
     monkeypatch.setattr(
-        "main.process_pdf_pipeline",
-        lambda *args, **kwargs: [],
+        "main.DocumentService.process_pdf",
+        lambda self, pdf_path: [],
     )
 
     monkeypatch.setattr(
@@ -136,6 +138,9 @@ def test_main_selects_document_by_id(monkeypatch, capsys):
     assert database.requested_document_id == 2
     assert "Selected document: Test Document" in captured.out
     assert "Goodbye!" in captured.out
+
+
+
 
 
 def test_main_handles_missing_document(monkeypatch, capsys):
