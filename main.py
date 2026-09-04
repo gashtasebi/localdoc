@@ -140,10 +140,12 @@ def main():
             )
         else:
             print(
-                f"Error: document with ID {args.delete} not found."
+                f"Error: document {args.delete} not found."
             )
 
         return
+
+    embedded_chunks = None
 
     if args.document is not None:
         try:
@@ -170,12 +172,17 @@ def main():
         )
 
         try:
-            pdf_path = validate_pdf_path(
-                document["file_path"]
+            embedded_chunks = (
+                document_service.load_embedded_chunks(
+                    args.document
+                )
             )
 
-        except (FileNotFoundError, ValueError) as error:
-            print(f"Error: {error}")
+        except ValueError:
+            print(
+                f"Error: document with ID "
+                f"{args.document} not found"
+            )
             return
 
     else:
@@ -197,11 +204,12 @@ def main():
     embedder = SentenceTransformerEmbedder()
     llm = OllamaLLM()
 
-    document_service.embedder = embedder
+    if embedded_chunks is None:
+        document_service.embedder = embedder
 
-    embedded_chunks = document_service.process_pdf(
-        pdf_path
-    )
+        embedded_chunks = document_service.process_pdf(
+            pdf_path
+        )
 
     print("Document loaded.")
     print("Ask questions about the document.")

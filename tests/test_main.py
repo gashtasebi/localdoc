@@ -51,6 +51,7 @@ def test_validate_pdf_path_rejects_missing_file(tmp_path):
 
 def test_validate_pdf_path_rejects_non_pdf(tmp_path):
     file_path = tmp_path / "document.txt"
+
     file_path.write_text("test")
 
     with pytest.raises(
@@ -62,6 +63,7 @@ def test_validate_pdf_path_rejects_non_pdf(tmp_path):
 
 def test_validate_pdf_path_accepts_pdf(tmp_path):
     pdf_path = tmp_path / "document.pdf"
+
     pdf_path.write_bytes(b"fake pdf")
 
     result = validate_pdf_path(str(pdf_path))
@@ -69,9 +71,10 @@ def test_validate_pdf_path_accepts_pdf(tmp_path):
     assert result == pdf_path
 
 
-
-
-def test_main_selects_document_by_id(monkeypatch, capsys):
+def test_main_selects_document_by_id_and_loads_embeddings(
+    monkeypatch,
+    capsys,
+):
     class FakeDatabase:
         def __init__(self):
             self.requested_document_id = None
@@ -79,26 +82,11 @@ def test_main_selects_document_by_id(monkeypatch, capsys):
         def initialize(self):
             pass
 
-        def get_document(self, document_id):
-            self.requested_document_id = document_id
-
-            return {
-                "id": document_id,
-                "file_path": "data/test_document.pdf",
-                "title": "Test Document",
-                "file_hash": "test-hash",
-            }
-
     database = FakeDatabase()
 
     monkeypatch.setattr(
         "main.LocalDatabase",
         lambda path: database,
-    )
-
-    monkeypatch.setattr(
-        "main.validate_pdf_path",
-        lambda path: Path(path),
     )
 
     monkeypatch.setattr(
@@ -111,9 +99,40 @@ def test_main_selects_document_by_id(monkeypatch, capsys):
         lambda: object(),
     )
 
+    loaded_chunks = [
+        "stored-chunk-1",
+        "stored-chunk-2",
+    ]
+
+    load_embedded_chunks_mock = []
+
+    class FakeDocumentService:
+        def __init__(self, database):
+            self.database = database
+
+        def load_document(self, document_id):
+            database.requested_document_id = document_id
+
+            return {
+                "id": document_id,
+                "file_path": "data/test_document.pdf",
+                "title": "Test Document",
+                "file_hash": "test-hash",
+            }
+
+        def load_embedded_chunks(self, document_id):
+            load_embedded_chunks_mock.append(document_id)
+            return loaded_chunks
+
+        def process_pdf(self, pdf_path):
+            raise AssertionError(
+                "process_pdf must not be called "
+                "for a stored document."
+            )
+
     monkeypatch.setattr(
-        "main.DocumentService.process_pdf",
-        lambda self, pdf_path: [],
+        "main.DocumentService",
+        FakeDocumentService,
     )
 
     monkeypatch.setattr(
@@ -136,11 +155,9 @@ def test_main_selects_document_by_id(monkeypatch, capsys):
     captured = capsys.readouterr()
 
     assert database.requested_document_id == 2
+    assert load_embedded_chunks_mock == [2]
     assert "Selected document: Test Document" in captured.out
     assert "Goodbye!" in captured.out
-
-
-
 
 
 def test_main_handles_missing_document(monkeypatch, capsys):
@@ -148,12 +165,25 @@ def test_main_handles_missing_document(monkeypatch, capsys):
         def initialize(self):
             pass
 
-        def get_document(self, document_id):
-            return None
+    database = FakeDatabase()
+
+    class FakeDocumentService:
+        def __init__(self, database):
+            self.database = database
+
+        def load_document(self, document_id):
+            raise ValueError(
+                f"Document with ID {document_id} not found."
+            )
 
     monkeypatch.setattr(
         "main.LocalDatabase",
-        lambda path: FakeDatabase(),
+        lambda path: database,
+    )
+
+    monkeypatch.setattr(
+        "main.DocumentService",
+        FakeDocumentService,
     )
 
     monkeypatch.setattr(
