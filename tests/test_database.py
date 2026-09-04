@@ -477,3 +477,26 @@ def test_list_documents_returns_newest_document_first(tmp_path):
     assert documents[1]["id"] == first_id
 
 
+
+def test_get_document_returns_complete_document_metadata(tmp_path):
+    db_path = tmp_path / "test.db"
+    database = LocalDatabase(db_path)
+    database.initialize()
+
+    document_id = database.save_document(
+        document=create_document(),
+        embedded_chunks=create_embedded_chunks(),
+        file_path="/documents/test.pdf",
+        title="Test Document",
+        file_hash="abc123",
+    )
+
+    document = database.get_document(document_id)
+
+    assert document["id"] == document_id
+    assert document["title"] == "Test Document"
+    assert document["file_path"] == "/documents/test.pdf"
+    assert document["file_hash"] == "abc123"
+    assert document["page_count"] == 3
+    assert document["chunk_count"] == 2
+
