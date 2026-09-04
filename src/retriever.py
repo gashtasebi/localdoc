@@ -3,11 +3,21 @@ import math
 from src.models import EmbeddedChunk
 
 
-def cosine_similarity(a: list[float], b: list[float]) -> float:
-    dot_product = sum(x * y for x, y in zip(a, b))
+def cosine_similarity(
+    a: list[float],
+    b: list[float],
+) -> float:
+    dot_product = sum(
+        x * y
+        for x, y in zip(a, b)
+    )
 
-    norm_a = math.sqrt(sum(x * x for x in a))
-    norm_b = math.sqrt(sum(y * y for y in b))
+    norm_a = math.sqrt(
+        sum(x * x for x in a)
+    )
+    norm_b = math.sqrt(
+        sum(y * y for y in b)
+    )
 
     if norm_a == 0 or norm_b == 0:
         return 0.0
@@ -21,25 +31,33 @@ def retrieve(
     top_k: int = 3,
     min_similarity: float | None = None,
 ) -> list[EmbeddedChunk]:
+    scored_chunks = [
+        (
+            cosine_similarity(
+                query_vector,
+                item.vector,
+            ),
+            item,
+        )
+        for item in embedded_chunks
+    ]
 
-    ranked = sorted(
-        embedded_chunks,
-        key=lambda item: cosine_similarity(
-            query_vector,
-            item.vector,
-        ),
+    if min_similarity is not None:
+        scored_chunks = [
+            (score, item)
+            for score, item in scored_chunks
+            if score >= min_similarity
+        ]
+
+    scored_chunks.sort(
+        key=lambda pair: pair[0],
         reverse=True,
     )
 
-    if min_similarity is not None:
-        ranked = [
-            item
-            for item in ranked
-            if cosine_similarity(query_vector, item.vector)
-            >= min_similarity
-        ]
-
-    return ranked[:top_k]
+    return [
+        item
+        for _, item in scored_chunks[:top_k]
+    ]
 
 
 def retrieve_by_text(
