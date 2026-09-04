@@ -1,4 +1,12 @@
+
 from src.models import EmbeddedChunk
+from src.llm import generate_answer
+from src.retriever import retrieve_by_text
+
+
+NO_ANSWER_MESSAGE = (
+    "The answer is not available in the provided document."
+)
 
 
 def build_context(
@@ -18,9 +26,12 @@ def build_prompt(
 
 Rules:
 - Use only information from the context.
+- Use only information explicitly contained in the context.
 - Do not use outside knowledge.
-- If the answer is not contained in the context, say:
-  "The answer is not available in the provided document."
+- Do not guess or infer information that is not supported by the context.
+- If the answer is not contained in the context, return exactly:
+  "{NO_ANSWER_MESSAGE}"
+- Do not mention information that is not present in the context.
 
 Context:
 {context}
@@ -31,13 +42,66 @@ Question:
 Answer:"""
 
 
-from src.llm import generate_answer
-from src.retriever import retrieve_by_text
+def is_no_answer(answer: str) -> bool:
+    normalized = " ".join(
+        answer.strip().lower().split()
+    )
+
+    no_answer_variants = {
+        NO_ANSWER_MESSAGE.lower(),
+        "the answer is not contained in the provided document.",
+        "the answer is not available in the provided document.",
+        "the answer is not in the provided document.",
+        "the answer is not available in the document.",
+        "the answer is not contained in the document.",
+        "die antwort ist nicht im bereitgestellten dokument enthalten.",
+        "die antwort ist nicht im bereitgestellten text enthalten.",
+        "die antwort ist nicht im dokument enthalten.",
+        "die antwort ist im bereitgestellten dokument nicht enthalten.",
+        "die information ist nicht im bereitgestellten dokument enthalten.",
+        "die information ist nicht im dokument enthalten.",
+    }
+
+    return normalized in no_answer_variants
+
+
+def get_source_pages(
+    embedded_chunks: list[EmbeddedChunk],
+) -> list[int]:
+    pages = {
+        item.chunk.page_number
+        for item in embedded_chunks
+    }
+
+    return sorted(pages)
+
+
+def format_answer(
+    answer: str,
+    source_pages: list[int],
+) -> str:
+    cleaned_answer = answer.strip()
+
+    if is_no_answer(cleaned_answer):
+        return NO_ANSWER_MESSAGE
+
+    if not source_pages:
+        return cleaned_answer
+
+    page_text = ", ".join(
+        str(page)
+        for page in source_pages
+    )
+
+    return (
+        f"{cleaned_answer}\n\n"
+        f"Source: Page {page_text}"
+    )
 
 
 def answer_question(
     question: str,
-    embedded_chunks,
+    embedded_chunks: list[EmbeddedChunk],
     embedder,
     llm,
     top_k: int = 3,
@@ -52,7 +116,7 @@ def answer_question(
     )
 
     if not relevant_chunks:
-        return "The answer is not available in the provided document."
+        return NO_ANSWER_MESSAGE
 
     context = build_context(relevant_chunks)
 
@@ -62,10 +126,11 @@ def answer_question(
         llm=llm,
     )
 
-    pages = sorted(
-        {item.chunk.page_number for item in relevant_chunks}
+    source_pages = get_source_pages(
+        relevant_chunks
     )
 
-    page_text = ", ".join(str(page) for page in pages)
-
-    return f"{answer}\n\nSource: Page {page_text}"
+    return format_answer(
+        answer=answer,
+        source_pages=source_pages,
+    )

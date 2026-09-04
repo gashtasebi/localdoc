@@ -1,165 +1,214 @@
+
 from src.models import Chunk, EmbeddedChunk
-from src.qa import answer_question, build_context
+from src.qa import (
+    NO_ANSWER_MESSAGE,
+    build_context,
+    build_prompt,
+    format_answer,
+    get_source_pages,
+    is_no_answer,
+)
 
 
-class FakeEmbedder:
-    def embed(self, text: str) -> list[float]:
-        return [1.0, 0.0]
+def make_embedded_chunk(
+    chunk_id: int,
+    page_number: int,
+    text: str,
+) -> EmbeddedChunk:
+    chunk = Chunk(
+        chunk_id=chunk_id,
+        page_number=page_number,
+        text=text,
+    )
 
-
-class FakeLLM:
-    def generate(self, prompt: str) -> str:
-        return "Machine M42 requires regular maintenance."
-
-
-class RecordingFakeLLM:
-    def __init__(self):
-        self.prompt = None
-
-    def generate(self, prompt: str) -> str:
-        self.prompt = prompt
-        return "Answer"
+    return EmbeddedChunk(
+        chunk=chunk,
+        vector=[1.0, 0.0, 0.0],
+    )
 
 
 def test_build_context_includes_page_numbers():
-    embedded_chunks = [
-        EmbeddedChunk(
-            chunk=Chunk(
-                chunk_id=1,
-                page_number=3,
-                text="Machine M42 requires regular maintenance.",
-            ),
-            vector=[1.0, 0.0],
+    chunks = [
+        make_embedded_chunk(
+            chunk_id=1,
+            page_number=2,
+            text="First page content.",
         ),
-        EmbeddedChunk(
-            chunk=Chunk(
-                chunk_id=2,
-                page_number=5,
-                text="Machine X10 is used for production.",
-            ),
-            vector=[0.0, 1.0],
+        make_embedded_chunk(
+            chunk_id=2,
+            page_number=5,
+            text="Second page content.",
         ),
     ]
 
-    context = build_context(embedded_chunks)
+    context = build_context(chunks)
 
-    assert "[Page 3]" in context
+    assert "[Page 2]" in context
+    assert "First page content." in context
     assert "[Page 5]" in context
-    assert "Machine M42 requires regular maintenance." in context
-    assert "Machine X10 is used for production." in context
+    assert "Second page content." in context
 
 
-def test_answer_question():
-    embedded_chunks = [
-        EmbeddedChunk(
-            chunk=Chunk(
-                chunk_id=1,
-                page_number=1,
-                text="Machine M42 requires regular maintenance.",
-            ),
-            vector=[1.0, 0.0],
+def test_build_context_separates_chunks():
+    chunks = [
+        make_embedded_chunk(
+            chunk_id=1,
+            page_number=1,
+            text="First chunk.",
+        ),
+        make_embedded_chunk(
+            chunk_id=2,
+            page_number=1,
+            text="Second chunk.",
         ),
     ]
 
-    answer = answer_question(
-        question="Which machine requires regular maintenance?",
-        embedded_chunks=embedded_chunks,
-        embedder=FakeEmbedder(),
-        llm=FakeLLM(),
-        top_k=3,
-        min_similarity=0.2,
+    context = build_context(chunks)
+
+    assert "First chunk.\n\n[Page 1]\nSecond chunk." in context
+
+
+def test_build_prompt_contains_question_and_context():
+    question = "What machine is described?"
+    context = "[Page 1]\nThe document describes machine M42."
+
+    prompt = build_prompt(
+        question=question,
+        context=context,
     )
 
-    assert answer == (
-        "Machine M42 requires regular maintenance.\n\n"
-        "Source: Page 1"
+    assert question in prompt
+    assert context in prompt
+
+
+def test_build_prompt_requires_context_only():
+    prompt = build_prompt(
+        question="What is the machine?",
+        context="Machine M42 is described.",
     )
 
+    assert "Use only information explicitly contained in the context." in prompt
+    assert "Do not use outside knowledge." in prompt
+    assert "Do not guess or infer information" in prompt
+    assert NO_ANSWER_MESSAGE in prompt
 
-def test_answer_question_includes_multiple_source_pages():
-    embedded_chunks = [
-        EmbeddedChunk(
-            chunk=Chunk(
-                chunk_id=1,
-                page_number=2,
-                text="Machine M42 requires regular maintenance.",
-            ),
-            vector=[1.0, 0.0],
+
+def test_is_no_answer_detects_standard_message():
+    assert is_no_answer(NO_ANSWER_MESSAGE)
+
+
+def test_is_no_answer_detects_german_message():
+    answer = (
+        "Die Antwort ist nicht im bereitgestellten Text enthalten."
+    )
+
+    assert is_no_answer(answer)
+
+
+def test_is_no_answer_ignores_whitespace_and_case():
+    answer = (
+        "  THE ANSWER IS NOT AVAILABLE IN THE "
+        "PROVIDED DOCUMENT.  "
+    )
+
+    assert is_no_answer(answer)
+
+
+def test_is_no_answer_rejects_real_answer():
+    answer = "Die Maschine M42 wird im Dokument beschrieben."
+
+    assert not is_no_answer(answer)
+
+
+def test_get_source_pages_returns_unique_sorted_pages():
+    chunks = [
+        make_embedded_chunk(
+            chunk_id=1,
+            page_number=5,
+            text="Page five.",
         ),
-        EmbeddedChunk(
-            chunk=Chunk(
-                chunk_id=2,
-                page_number=5,
-                text="Machine M42 is used for production.",
-            ),
-            vector=[1.0, 0.0],
+        make_embedded_chunk(
+            chunk_id=2,
+            page_number=2,
+            text="Page two.",
         ),
-    ]
-
-    answer = answer_question(
-        question="What is Machine M42?",
-        embedded_chunks=embedded_chunks,
-        embedder=FakeEmbedder(),
-        llm=FakeLLM(),
-        top_k=3,
-        min_similarity=0.2,
-    )
-
-    assert "Source: Page 2, 5" in answer
-
-
-def test_answer_question_sends_question_and_context_to_llm():
-    embedded_chunks = [
-        EmbeddedChunk(
-            chunk=Chunk(
-                chunk_id=1,
-                page_number=1,
-                text="Python is a programming language.",
-            ),
-            vector=[1.0, 0.0],
+        make_embedded_chunk(
+            chunk_id=3,
+            page_number=5,
+            text="Another chunk on page five.",
         ),
-    ]
-
-    llm = RecordingFakeLLM()
-
-    answer_question(
-        question="What is Python?",
-        embedded_chunks=embedded_chunks,
-        embedder=FakeEmbedder(),
-        llm=llm,
-        top_k=3,
-        min_similarity=0.2,
-    )
-
-    assert "What is Python?" in llm.prompt
-    assert "Python is a programming language." in llm.prompt
-
-
-def test_answer_question_returns_unavailable_when_no_chunk_passes_threshold():
-    embedded_chunks = [
-        EmbeddedChunk(
-            chunk=Chunk(
-                chunk_id=1,
-                page_number=1,
-                text="Machine M42 requires regular maintenance.",
-            ),
-            vector=[0.0, 1.0],
+        make_embedded_chunk(
+            chunk_id=4,
+            page_number=1,
+            text="Page one.",
         ),
     ]
 
-    llm = RecordingFakeLLM()
+    pages = get_source_pages(chunks)
 
-    answer = answer_question(
-        question="What is the name of the CEO of Apple?",
-        embedded_chunks=embedded_chunks,
-        embedder=FakeEmbedder(),
-        llm=llm,
-        top_k=3,
-        min_similarity=0.2,
+    assert pages == [1, 2, 5]
+
+
+def test_get_source_pages_returns_empty_list_for_no_chunks():
+    assert get_source_pages([]) == []
+
+
+def test_format_answer_adds_source_pages():
+    answer = "Machine M42 is described."
+
+    result = format_answer(
+        answer=answer,
+        source_pages=[1, 3],
     )
 
-    assert answer == (
-        "The answer is not available in the provided document."
+    assert result == (
+        "Machine M42 is described.\n\n"
+        "Source: Page 1, 3"
     )
 
-    assert llm.prompt is None
+
+def test_format_answer_does_not_add_source_when_no_pages():
+    answer = "Machine M42 is described."
+
+    result = format_answer(
+        answer=answer,
+        source_pages=[],
+    )
+
+    assert result == answer
+    assert "Source:" not in result
+
+
+def test_format_answer_removes_source_for_no_answer():
+    result = format_answer(
+        answer=NO_ANSWER_MESSAGE,
+        source_pages=[1],
+    )
+
+    assert result == NO_ANSWER_MESSAGE
+    assert "Source:" not in result
+
+
+def test_format_answer_removes_source_for_german_no_answer():
+    result = format_answer(
+        answer=(
+            "Die Antwort ist nicht im bereitgestellten "
+            "Text enthalten."
+        ),
+        source_pages=[1],
+    )
+
+    assert result == NO_ANSWER_MESSAGE
+    assert "Source:" not in result
+
+
+def test_format_answer_strips_answer_whitespace():
+    result = format_answer(
+        answer="  Machine M42 is described.  ",
+        source_pages=[2],
+    )
+
+    assert result == (
+        "Machine M42 is described.\n\n"
+        "Source: Page 2"
+    )
